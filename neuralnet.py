@@ -35,7 +35,12 @@ def one_hot_encoding(labels, num_classes=10):
     """
     Encode labels using one hot encoding and return them.
     """
-    return labels
+    one_hot_labels = []
+    for label in labels:
+        ohe = [0]*num_classes
+        ohe[int(label)] = 1
+        one_hot_labels.append(ohe)
+    return np.array(one_hot_labels)
 
 
 def load_data(path, mode='train'):
