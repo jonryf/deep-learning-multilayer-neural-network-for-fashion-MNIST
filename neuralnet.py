@@ -299,17 +299,53 @@ class Neuralnetwork():
             delta = layer.backward(delta)
 
 
-def train(model, x_train, y_train, x_valid, y_valid, config):
+#def train(model, x_train, y_train, x_valid, y_valid, config):
+def train(model, x_train, y_train, config)
     """
     Train your model here.
     Implement batch SGD to train the model.
     Implement Early Stopping.
     Use config to set parameters for training like learning rate, momentum, etc.
     """
-    for epoch in range(config['epochs']):
-        model.forward(x_train, y_train)
-        model.backward()
+    #create K-folds
+    K = 6 #10,000 in each batch
+    kx_train = [k1xtrain, k2xtrain, k3xtrain, k4xtrain, k5xtrain, k6xtrain]
+    ky_train = [k1ytrain, k2ytrain, k3ytrain, k4ytrain, k5ytrain, k6ytrain]
+    for i in range(K):
+        kx_train[i] = x_train[i*len(x_train)/6 : (i+1)*len(x_train)/6]
+        ky_train[i] = y_train[i*len(y_train)/6 : (i+1)*len(y_train)/6]
 
+    #store current-best model
+    best_model = model
+
+    training_accuracies = []
+    validation_accuracies = []
+
+
+    #for each k-fold:
+    training_complete = False
+    while (training_complete == False):
+        for i in range(K):
+            xfold = kx_train[i]
+            yfold = ky_train[i]
+            for epoch in range(config['epochs']):
+                # for each mini-batch (1/100th of data):
+                for j in range(100):
+                    x_batch = xfold[j * len(xfold) / 100: (j + 1) * len(xfold) / 100]
+                    y_batch = yfold[j * len(yfold) / 100: (j + 1) * len(yfold) / 100]
+                    model.forward(x_batch, y_batch)
+                    model.backward()
+                #training accuracy after single epoch:
+                train_acc = test(model, x_train, y_train)
+                training_accuracies.append(train_acc)
+                #validation accuracy after single epoch:
+                valid_acc = test(model, x_test, y_test)
+                validation_accuracies.append(valid_acc)
+                if len(validation_accuracies) >= 2:
+                    #if model gets worse
+                    if validation_accuracies[-1] < validation_accuracies[-2]:
+                        training_complete = True
+    '''
     # update weights:
     for layer in model.layers:
         if isinstance(layer, Layer):
@@ -317,7 +353,7 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
 
             layer.w += learning_rate * layer.d_w
             layer.b += learning_rate * layer.d_b
-
+    '''
 
 def test(model, X_test, y_test):
     """
@@ -341,12 +377,16 @@ if __name__ == "__main__":
     x_test, y_test = load_data(path="./", mode="t10k")
 
     # Create splits for validation data here.
+    num_examples = len(x_train)
+    print("# examples:", num_examples)
+
+
+    # train the model
+    #train(model, x_train, y_train, x_valid, y_valid, config)
     size = len(x_train)
     validation_size = 0.9
     x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
     x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
 
-    # train the model
-    train(model, x_train, y_train, x_valid, y_valid, config)
-
+    train(model, x_train, y_train, config)
     test_acc = test(model, x_test, y_test)
