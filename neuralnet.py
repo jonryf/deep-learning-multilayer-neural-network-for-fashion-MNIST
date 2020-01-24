@@ -16,6 +16,9 @@ import os, gzip
 import yaml
 import numpy as np
 
+train_std = None
+train_mean = None
+
 
 def load_config(path):
     """
@@ -29,7 +32,7 @@ def normalize_data(img):
     Normalize your inputs here and return them.
     """
 
-    return img / np.amax(img)
+    return (img - train_mean) / train_std
 
 
 def one_hot_encoding(labels, num_classes=10):
@@ -38,7 +41,7 @@ def one_hot_encoding(labels, num_classes=10):
     """
     one_hot_labels = []
     for label in labels:
-        ohe = [0]*num_classes
+        ohe = [0] * num_classes
         ohe[int(label)] = 1
         one_hot_labels.append(ohe)
     return np.array(one_hot_labels)
@@ -49,15 +52,16 @@ def load_data(path, mode='train'):
     Load Fashion MNIST data.
     Use mode='train' for train and mode='t10k' for test.
     """
-
     labels_path = os.path.join(path, f'{mode}-labels-idx1-ubyte.gz')
     images_path = os.path.join(path, f'{mode}-images-idx3-ubyte.gz')
-
     with gzip.open(labels_path, 'rb') as lbpath:
         labels = np.frombuffer(lbpath.read(), dtype=np.uint8, offset=8)
 
     with gzip.open(images_path, 'rb') as imgpath:
         images = np.frombuffer(imgpath.read(), dtype=np.uint8, offset=16).reshape(len(labels), 784)
+    if mode == 'train':
+        train_mean = np.mean(images)
+        train_std = np.std(images)
 
     normalized_images = normalize_data(images)
     one_hot_labels = one_hot_encoding(labels, num_classes=10)
@@ -244,10 +248,12 @@ class Neuralnetwork():
         self.y = None  # Save the output vector of model in this
         self.targets = None  # Save the targets in forward in this variable
         self.config = config
+        self.training_loss = []
+        self.validation_loss = []
+        self.training_acc = []
+        self.validation_acc = []
 
         # Add layers specified by layer_specs.
-        # <real layer>, activation layer, <real layer> activation layer>
-
         for i in range(len(config['layer_specs']) - 1):
             self.layers.append(Layer(config['layer_specs'][i], config['layer_specs'][i + 1]))
             if i < len(config['layer_specs']) - 2:
@@ -281,10 +287,13 @@ class Neuralnetwork():
         '''
         compute the categorical cross-entropy loss and return it.
         '''
+        loss = 1 / 2 * np.sum(targets.reshape(-1, 1) * np.log(logits + 0.0000000001), axis=0) / logits.shape[0]
 
-        loss = np.sum(targets.reshape(-1, 1) * np.log(logits + 0.0000000001), axis=0) / logits.shape[0]
-
-        # todo  L2 loss
+        # L2 loss:
+        l2_penalty = config['L2_penalty']
+        for layer in self.layers:
+            if isinstance(layer, Layer):
+                loss += l2_penalty / 2 * np.sum(layer.w ** 2)
 
         return loss
 
@@ -297,6 +306,13 @@ class Neuralnetwork():
 
         for layer in reversed(self.layers):
             delta = layer.backward(delta)
+
+    def log_metrics(self, training_loss, validation_loss, training_acc, validation_acc):
+        self.training_loss.append(training_loss)
+        self.validation_loss.append(validation_loss)
+        self.training_acc.append(training_acc)
+        self.validation_acc.append(validation_acc)
+
 
 
 def train(model, x_train, y_train, x_valid, y_valid, config):
@@ -311,11 +327,17 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
         model.backward()
 
     # update weights:
+    v = 0
+
     for layer in model.layers:
         if isinstance(layer, Layer):
             learning_rate = config['learning_rate']
-
-            layer.w += learning_rate * layer.d_w
+            if config['momentum']:
+                momentum_gamma = config['momentum_gamma']
+                v = momentum_gamma * v + (1 - momentum_gamma) * layer.d_w
+                layer.w += learning_rate * v * config['L2_penalty']
+            else:
+                layer.w += learning_rate * layer.d_w * config['L2_penalty']
             layer.b += learning_rate * layer.d_b
 
 
