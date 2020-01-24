@@ -28,7 +28,8 @@ def normalize_data(img):
     """
     Normalize your inputs here and return them.
     """
-    return img
+
+    return img / np.amax(img)
 
 
 def one_hot_encoding(labels, num_classes=10):
@@ -54,7 +55,7 @@ def load_data(path, mode='train'):
         images = np.frombuffer(imgpath.read(), dtype=np.uint8, offset=16).reshape(len(labels), 784)
 
     normalized_images = normalize_data(images)
-    one_hot_labels    = one_hot_encoding(labels, num_classes=10)
+    one_hot_labels = one_hot_encoding(labels, num_classes=10)
 
     return normalized_images, one_hot_labels
 
@@ -64,10 +65,10 @@ def softmax(x):
     Implement the softmax function here.
     Remember to take care of the overflow condition.
     """
-    raise NotImplementedError("Softmax not implemented")
+    return np.exp(x) / np.sum(np.exp(x), axis=len(x.shape) - 1, keepdims=True)
 
 
-class Activation():
+class Activation:
     """
     The class implements different types of activation functions for
     your neural network layers.
@@ -78,7 +79,7 @@ class Activation():
         >>> gradient = sigmoid_layer.backward(delta=1.0)
     """
 
-    def __init__(self, activation_type = "sigmoid"):
+    def __init__(self, activation_type="sigmoid"):
         """
         Initialize activation type and placeholders here.
         """
@@ -128,44 +129,46 @@ class Activation():
         """
         Implement the sigmoid activation here.
         """
-        self.X = 1/(1+ np.exp(-x))
+        self.x = 1 / (1 + np.exp(-x))
+        return self.x
 
     def tanh(self, x):
         """
         Implement tanh here.
         """
-        self.X = np.tanh(x)
-
+        self.x = np.tanh(x)
+        return self.x
 
     def ReLU(self, x):
         """
         Implement ReLU here.
         """
-        self.X = np.max(0, x)
+        self.x = np.maximum(0, x)
+        return self.x
 
     def grad_sigmoid(self):
         """
         Compute the gradient for sigmoid here.
         """
-        return self.X * (1- self.X )
+        return self.x * (1 - self.x)
 
     def grad_tanh(self):
         """
         Compute the gradient for tanh here.
         """
-        return 1 - self.X ** 2
+        return 1 - self.x ** 2
 
     def grad_ReLU(self):
         """
         Compute the gradient for ReLU here.
         """
-        self.X[self.X <= 0] = 0
-        self.X[self.X > 0] = 1
-        return self.X
+        grad = self.x
+        grad[self.x <= 0] = 0
+        grad[self.x > 0] = 1
+        return grad
 
 
-
-class Layer():
+class Layer:
     """
     This class implements Fully Connected layers for your neural network.
 
@@ -180,10 +183,10 @@ class Layer():
         Define the architecture and create placeholder.
         """
         np.random.seed(42)
-        self.w = None    # Declare the Weight matrix
-        self.b = None    # Create a placeholder for Bias
-        self.x = None    # Save the input to forward in this
-        self.a = None    # Save the output of forward pass in this (without activation)
+        self.w = np.random.randn(in_units, out_units)  # Declare the Weight matrix
+        self.b = np.array(np.zeros((1, out_units)))  # Create a placeholder for Bias
+        self.x = None  # Save the input to forward in this
+        self.a = None  # Save the output of forward pass in this (without activation)
 
         self.d_x = None  # Save the gradient w.r.t x in this
         self.d_w = None  # Save the gradient w.r.t w in this
@@ -201,7 +204,9 @@ class Layer():
         Do not apply activation here.
         Return self.a
         """
-        raise NotImplementedError("Layer forward pass not implemented.")
+        self.x = x
+        self.a = self.x.dot(self.w) + self.b
+        return self.a
 
     def backward(self, delta):
         """
@@ -209,7 +214,10 @@ class Layer():
         computes gradient for its weights and the delta to pass to its previous layers.
         Return self.dx
         """
-        raise NotImplementedError("Backprop for Layer not implemented.")
+        self.d_x = np.dot(delta, self.w.T)
+        self.d_w = np.dot(self.x.T, delta)
+        self.d_b = np.mean(delta, axis=0).reshape((1, -1))
+        return self.d_x
 
 
 class Neuralnetwork():
@@ -226,14 +234,15 @@ class Neuralnetwork():
         """
         Create the Neural Network using config.
         """
-        self.layers = []     # Store all layers in this list.
-        self.x = None        # Save the input to forward in this
-        self.y = None        # Save the output vector of model in this
+        self.layers = []  # Store all layers in this list.
+        self.x = None  # Save the input to forward in this
+        self.y = None  # Save the output vector of model in this
         self.targets = None  # Save the targets in forward in this variable
+        self.config = config
 
         # Add layers specified by layer_specs.
         for i in range(len(config['layer_specs']) - 1):
-            self.layers.append(Layer(config['layer_specs'][i], config['layer_specs'][i+1]))
+            self.layers.append(Layer(config['layer_specs'][i], config['layer_specs'][i + 1]))
             if i < len(config['layer_specs']) - 2:
                 self.layers.append(Activation(config['activation']))
 
@@ -248,20 +257,39 @@ class Neuralnetwork():
         Compute forward pass through all the layers in the network and return it.
         If targets are provided, return loss as well.
         """
-        raise NotImplementedError("Forward not implemented for NeuralNetwork")
+        self.x = x
+
+        for layer in self.layers:
+            self.x = layer.forward(self.x)
+
+        self.y = softmax(self.x)
+
+        self.targets = targets
+        if targets is not None:
+            return self.loss(self.x, targets), self.y
+
+        return None, self.y
 
     def loss(self, logits, targets):
         '''
         compute the categorical cross-entropy loss and return it.
         '''
-        raise NotImplementedError("Loss not implemented for NeuralNetwork")
+
+        loss = np.sum(targets.reshape(-1, 1) * np.log(logits + 0.0000000001), axis=0) / logits.shape[0]
+
+        # todo  L2 loss
+
+        return loss
 
     def backward(self):
         '''
         Implement backpropagation here.
         Call backward methods of individual layer's.
         '''
-        raise NotImplementedError("Backprop not implemented for NeuralNetwork")
+        delta = self.targets - self.y
+
+        for layer in reversed(self.layers):
+            delta = layer.backward(delta)
 
 
 def train(model, x_train, y_train, x_valid, y_valid, config):
@@ -271,16 +299,27 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
     Implement Early Stopping.
     Use config to set parameters for training like learning rate, momentum, etc.
     """
+    for epoch in range(config['epochs']):
+        model.forward(x_train, y_train)
+        model.backward()
 
-    raise NotImplementedError("Train method not implemented")
+    # update weights:
+    for layer in model.layers:
+        if isinstance(layer, Layer):
+            learning_rate = config['learning_rate']
+
+            layer.w += learning_rate * layer.d_w
+            layer.b += learning_rate * layer.d_b
 
 
 def test(model, X_test, y_test):
     """
     Calculate and return the accuracy on the test set.
     """
-
-    raise NotImplementedError("Test method not implemented")
+    loss, predictions = model.forward(X_test, y_test)
+    targets = np.argmax(y_test, axis=-1)
+    predictions = np.argmax(predictions, axis=-1)
+    return np.sum(targets == predictions) / len(y_test)
 
 
 if __name__ == "__main__":
@@ -288,14 +327,17 @@ if __name__ == "__main__":
     config = load_config("./")
 
     # Create the model
-    model  = Neuralnetwork(config)
+    model = Neuralnetwork(config)
 
     # Load the data
     x_train, y_train = load_data(path="./", mode="train")
-    x_test,  y_test  = load_data(path="./", mode="t10k")
+    x_test, y_test = load_data(path="./", mode="t10k")
 
     # Create splits for validation data here.
-    # x_valid, y_valid = ...
+    size = len(x_train)
+    validation_size = 0.9
+    x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
+    x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
 
     # train the model
     train(model, x_train, y_train, x_valid, y_valid, config)
