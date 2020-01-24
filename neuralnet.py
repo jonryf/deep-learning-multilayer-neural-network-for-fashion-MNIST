@@ -214,8 +214,8 @@ class Layer:
         computes gradient for its weights and the delta to pass to its previous layers.
         Return self.dx
         """
-        self.d_x = np.dot(delta, self.w.T)
-        self.d_w = np.dot(self.x.T, delta)
+        self.d_x = delta.dot(self.w.T)
+        self.d_w = self.x.T.dot(delta)
         self.d_b = np.mean(delta, axis=0).reshape((1, -1))
         return self.d_x
 
@@ -241,6 +241,8 @@ class Neuralnetwork():
         self.config = config
 
         # Add layers specified by layer_specs.
+        # <real layer>, activation layer, <real layer> activation layer>
+
         for i in range(len(config['layer_specs']) - 1):
             self.layers.append(Layer(config['layer_specs'][i], config['layer_specs'][i + 1]))
             if i < len(config['layer_specs']) - 2:
