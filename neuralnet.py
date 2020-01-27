@@ -15,16 +15,18 @@
 import os, gzip
 import yaml
 import numpy as np
+import math
 
 train_std = None
 train_mean = None
 
 
-def load_config(path):
+def load_config(version):
     """
     Load the configuration from config.yaml.
     """
-    return yaml.load(open('config.yaml', 'r'), Loader=yaml.SafeLoader)
+    #
+    return yaml.load(open('config' + version + '.yaml', 'r'), Loader=yaml.SafeLoader)
 
 
 def normalize_data(img):
@@ -46,6 +48,16 @@ def one_hot_encoding(labels, num_classes=10):
         one_hot_labels.append(ohe)
     return np.array(one_hot_labels)
 
+def mini_batch(x, y): #returns data split into 128-max batches (leaves out remainder)
+    if len(x) < 128:
+        return x, y
+    num_batches = math.floor(len(x) / 128)
+    x_batches = []
+    y_batches = []
+    for i in range(num_batches-1):
+        x_batches.append(x[i*128: (i+1)*128])
+        y_batches.append(y[i*128: (i+1)*128])
+    return x_batches, y_batches
 
 def load_data(path, mode='train'):
     """
@@ -315,52 +327,41 @@ class Neuralnetwork():
 
 
 
-#def train(model, x_train, y_train, x_valid, y_valid, config):
-def train(model, x_train, y_train, config)
+def train(model, x_train, y_train, x_valid, y_valid, config):
+#def train(model, x_train, y_train, config):
     """
     Train your model here.
     Implement batch SGD to train the model.
     Implement Early Stopping.
     Use config to set parameters for training like learning rate, momentum, etc.
     """
-    #create K-folds
-    K = 6 #10,000 in each batch
-    kx_train = [k1xtrain, k2xtrain, k3xtrain, k4xtrain, k5xtrain, k6xtrain]
-    ky_train = [k1ytrain, k2ytrain, k3ytrain, k4ytrain, k5ytrain, k6ytrain]
-    for i in range(K):
-        kx_train[i] = x_train[i*len(x_train)/6 : (i+1)*len(x_train)/6]
-        ky_train[i] = y_train[i*len(y_train)/6 : (i+1)*len(y_train)/6]
+    #break data into 128-size batches for small batch gradient descent
+    x_batches, y_batches = mini_batch(x_train, y_train)
+
+    #number of times the error can increase before ending training
+    sensitivity = 3
 
     #store current-best model
-    best_model = model
+    #best_model = model
 
-    training_accuracies = []
-    validation_accuracies = []
-
-
-    #for each k-fold:
     training_complete = False
-    while (training_complete == False):
-        for i in range(K):
-            xfold = kx_train[i]
-            yfold = ky_train[i]
-            for epoch in range(config['epochs']):
-                # for each mini-batch (1/100th of data):
-                for j in range(100):
-                    x_batch = xfold[j * len(xfold) / 100: (j + 1) * len(xfold) / 100]
-                    y_batch = yfold[j * len(yfold) / 100: (j + 1) * len(yfold) / 100]
-                    model.forward(x_batch, y_batch)
-                    model.backward()
-                #training accuracy after single epoch:
-                train_acc = test(model, x_train, y_train)
-                training_accuracies.append(train_acc)
-                #validation accuracy after single epoch:
-                valid_acc = test(model, x_test, y_test)
-                validation_accuracies.append(valid_acc)
-                if len(validation_accuracies) >= 2:
-                    #if model gets worse
-                    if validation_accuracies[-1] < validation_accuracies[-2]:
-                        training_complete = True
+    for epoch in range(config['epochs']):
+        while training_complete == False:
+            #for each batch
+            for i in range(len(x_batches)):
+                model.forward(x_batches[i], y_batches[i])
+                model.backward()
+
+            if epoch >= 4:
+                #if model gets worse
+                '''
+                a = validation_accuracies[-1] < validation_accuracies[-2]
+                b = validation_accuracies[-2] < validation_accuracies[-3]
+                c = validation_accuracies[-3] < validation_accuracies[-4]
+                '''
+                if model.validation_increments > sensitivity:
+                    training_complete = True
+
     '''
     # update weights:
     v = 0
@@ -384,12 +385,12 @@ def test(model, X_test, y_test):
     loss, predictions = model.forward(X_test, y_test)
     targets = np.argmax(y_test, axis=-1)
     predictions = np.argmax(predictions, axis=-1)
-    return np.sum(targets == predictions) / len(y_test)
+    return loss, (np.sum(targets == predictions) / len(y_test))
 
 
 if __name__ == "__main__":
     # Load the configuration.
-    config = load_config("./")
+    config = load_config("b")
 
     # Create the model
     model = Neuralnetwork(config)
