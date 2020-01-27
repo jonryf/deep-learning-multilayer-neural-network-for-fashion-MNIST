@@ -332,23 +332,23 @@ class Neuralnetwork():
         self.training_acc.append(training_acc)
         self.validation_acc.append(validation_acc)
 
-def update_weights(model):
-    """
-    Update the weights, after back-propagation has happen
+    def update_weights(self):
+        """
+        Update the weights, after back-propagation has happen
 
-    @param model: model to update weights on
-    """
-    v = 0
-    for layer in model.layers:
-        if isinstance(layer, Layer):
-            learning_rate = config['learning_rate']
-            if config['momentum']:
-                momentum_gamma = config['momentum_gamma']
-                v = momentum_gamma * v + (1 - momentum_gamma) * layer.d_w
-                layer.w += learning_rate * v * config['L2_penalty']
-            else:
-                layer.w += learning_rate * layer.d_w * config['L2_penalty']
-            layer.b += learning_rate * layer.d_b
+        @param model: model to update weights on
+        """
+        v = 0
+        for layer in self.layers:
+            if isinstance(layer, Layer):
+                learning_rate = self.config['learning_rate']
+                if self.config['momentum']:
+                    momentum_gamma = self.config['momentum_gamma']
+                    v = momentum_gamma * v + (1 - momentum_gamma) * layer.d_w
+                    layer.w += learning_rate * v * self.config['L2_penalty']
+                else:
+                    layer.w += learning_rate * layer.d_w * self.config['L2_penalty']
+                layer.b += learning_rate * layer.d_b
 
 
 def train(model, x_train, y_train, x_valid, y_valid, config):
@@ -375,34 +375,17 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
             for i in range(len(x_batches)):
                 model.forward(x_batches[i], y_batches[i])
                 model.backward()
+                model.update_weights() #implements momentum and regularization
+
+            # track metrics across each epoch
             tl, ta = test(model, x_train, y_train)
             vl, va = test(model, x_valid, y_valid)
-
-            #track values across each epoch
             model.log_metrics((tl, vl, ta, va))
 
             #early stopping condition
             if epoch >= 4:
                 if model.valdation_increments > threshold:
                     training_complete = True
-
-
-
-    '''
-    # update weights:
-    v = 0
-
-    for layer in model.layers:
-        if isinstance(layer, Layer):
-            learning_rate = config['learning_rate']
-            if config['momentum']:
-                momentum_gamma = config['momentum_gamma']
-                v = momentum_gamma * v + (1 - momentum_gamma) * layer.d_w
-                layer.w += learning_rate * v * config['L2_penalty']
-            else:
-                layer.w += learning_rate * layer.d_w * config['L2_penalty']
-            layer.b += learning_rate * layer.d_b
-    '''
 
 def test(model, X_test, y_test):
     """
@@ -413,6 +396,9 @@ def test(model, X_test, y_test):
     predictions = np.argmax(predictions, axis=-1)
     accuracy = np.sum(targets == predictions) / len(y_test)
     return loss, accuracy
+
+def split_x_v(data):
+
 
 def task_b():
     ###############################
@@ -428,7 +414,7 @@ def task_b():
 
     # Create splits for validation data here.
     num_examples = len(x_train)
-    print("# examples:", num_examples)
+    #print("# examples:", num_examples)
 
 
     # create validation set
@@ -449,24 +435,22 @@ def task_c():
 
     # Create the model
     model = Neuralnetwork(config)
-
     # Load the data
     x_train, y_train = load_data(path="./", mode="train")
     x_test, y_test = load_data(path="./", mode="t10k")
 
-    # Create splits for validation data here.
     num_examples = len(x_train)
     print("# examples:", num_examples)
 
+    #perform k fold
+        # create validation set
+        size = len(x_train)
+        validation_size = 0.9
+        x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
+        x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
 
-    # create validation set
-    size = len(x_train)
-    validation_size = 0.9
-    x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
-    x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
-
-    #train the model
-    train(model, x_train, y_train, x_valid, y_valid, config)
+        #train the model
+        train(model, x_train, y_train, x_valid, y_valid, config)
 
     test_acc = test(model, x_test, y_test)
 if __name__ == "__main__":
