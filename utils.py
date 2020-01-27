@@ -29,7 +29,7 @@ def plot(model):
                ["Epoch", "Cross-entropy loss"], ["Training loss", "Validation loss"])
 
     # plot the accuracy
-    graph_plot([model.training_acc * 100, model.validation_acc * 100],
+    graph_plot([model.training_acc, model.validation_acc],
                ["Epoch", "Accuracy"], ["Training accuracy", "Validation accuracy"])
 
 
@@ -46,7 +46,7 @@ def numerical_approximation(x_data, y_data, model, layer_idx, node_idx):
     layer = model.layers[layer_idx]
     # extract modify weights
     # w + eps
-    #layer.w[node_idx] += eps
+    layer.w[node_idx] += eps
 
     # forward pass and calculate loss
     loss_1, _ = model.forward(x_data, y_data)
@@ -65,9 +65,10 @@ def numerical_approximation(x_data, y_data, model, layer_idx, node_idx):
     model.forward(x_data, y_data)
     model.backward()
 
-    numerical_grad = (loss_1 - loss_2) / (2 * eps)
-    backprop_grad = layer.d_w[node_idx]
-    print("Gradient difference: {}".format(numerical_grad-backprop_grad))
+    numerical_grad = ((loss_1 - loss_2) / (2 * eps))
+    backprop_grad = layer.d_w[0][0]
+    print(backprop_grad.shape)
+    #print("Gradient difference: {}".format(numerical_grad-backprop_grad))
     print("Numerical approximation: {}".format(numerical_grad))
     print("Backprop: {}".format(backprop_grad))
 

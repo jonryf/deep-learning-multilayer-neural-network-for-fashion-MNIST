@@ -17,6 +17,8 @@ import yaml
 import numpy as np
 import math
 
+from utils import plot
+
 train_std = None
 train_mean = None
 
@@ -301,7 +303,7 @@ class Neuralnetwork():
         '''
         compute the categorical cross-entropy loss and return it.
         '''
-        loss = 0.5 * np.sum(targets * np.log(logits + 0.0000000001), axis=0, keepdims=True) / logits.shape[0]
+        loss = -np.sum(np.sum(targets * np.log(logits + 0.0000000001), axis=1, keepdims=True) / logits.shape[0])
 
         # L2 loss:
         l2_penalty = self.config['L2_penalty']
@@ -380,25 +382,26 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
             # track metrics across each epoch
             tl, ta = test(model, x_train, y_train)
             vl, va = test(model, x_valid, y_valid)
-            model.log_metrics((tl, vl, ta, va))
+            model.log_metrics(tl, vl, ta, va)
 
             #early stopping condition
-            if epoch >= 4:
-                if model.valdation_increments > threshold:
-                    training_complete = True
+            if epoch >= 4 and model.validation_increments > threshold:
+                training_complete = True
 
 def test(model, X_test, y_test):
     """
     Calculate and return the accuracy on the test set.
     """
     loss, predictions = model.forward(X_test, y_test)
+    print(y_test.shape)
     targets = np.argmax(y_test, axis=-1)
     predictions = np.argmax(predictions, axis=-1)
     accuracy = np.sum(targets == predictions) / len(y_test)
+    print(accuracy)
     return loss, accuracy
 
 def split_x_v(data):
-
+    pass
 
 def task_b():
     ###############################
@@ -428,35 +431,52 @@ def task_b():
 
     test_acc = test(model, x_test, y_test)
 
-def task_c():
-    ###############################
-    # Load the configuration.
-    config = load_config("b")
+# def task_c():
+#     ###############################
+#     # Load the configuration.
+#     config = load_config("b")
+#
+#     # Create the model
+#     model = Neuralnetwork(config)
+#     # Load the data
+#     x_train, y_train = load_data(path="./", mode="train")
+#     x_test, y_test = load_data(path="./", mode="t10k")
+#
+#     num_examples = len(x_train)
+#     print("# examples:", num_examples)
+#
+#     #perform k fold
+#         # create validation set
+#         size = len(x_train)
+#         validation_size = 0.9
+#         x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
+#         x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
+#
+#         #train the model
+#         train(model, x_train, y_train, x_valid, y_valid, config)
+#
+#     test_acc = test(model, x_test, y_test)
 
-    # Create the model
+def task_d():
+    config = load_config("d")
     model = Neuralnetwork(config)
-    # Load the data
     x_train, y_train = load_data(path="./", mode="train")
     x_test, y_test = load_data(path="./", mode="t10k")
 
-    num_examples = len(x_train)
-    print("# examples:", num_examples)
+    validation_size = 0.9
+    size = len(x_train)
+    x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
+    x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
 
-    #perform k fold
-        # create validation set
-        size = len(x_train)
-        validation_size = 0.9
-        x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
-        x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
+    train(model, x_train, y_train, x_valid, y_valid, config)
+    plot(model)
 
-        #train the model
-        train(model, x_train, y_train, x_valid, y_valid, config)
 
-    test_acc = test(model, x_test, y_test)
+
 if __name__ == "__main__":
     #task_b()
-    task_c()
-    #task_d()
+    #task_c()
+    task_d()
     #task_e()
     #task_f()
 
