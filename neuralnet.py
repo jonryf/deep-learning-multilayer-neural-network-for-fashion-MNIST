@@ -15,13 +15,18 @@
 import os, gzip
 import yaml
 import numpy as np
+import math
+
+train_std = None
+train_mean = None
 
 
-def load_config(path, config_name='config.yaml'):
+def load_config(version):
     """
     Load the configuration from config.yaml.
     """
-    return yaml.load(open(config_name, 'r'), Loader=yaml.SafeLoader)
+    #
+    return yaml.load(open('config' + version + '.yaml', 'r'), Loader=yaml.SafeLoader)
 
 
 def normalize_data(img):
@@ -29,8 +34,6 @@ def normalize_data(img):
     Normalize your inputs here and return them.
     """
 
-    print(train_mean)
-    print(train_std)
     return (img - train_mean) / train_std
 
 
@@ -45,6 +48,16 @@ def one_hot_encoding(labels, num_classes=10):
         one_hot_labels.append(ohe)
     return np.array(one_hot_labels)
 
+def mini_batch(x, y): #returns data split into 128-max batches (leaves out remainder)
+    if len(x) < 128:
+        return x, y
+    num_batches = math.floor(len(x) / 128)
+    x_batches = []
+    y_batches = []
+    for i in range(num_batches-1):
+        x_batches.append(x[i*128: (i+1)*128])
+        y_batches.append(y[i*128: (i+1)*128])
+    return x_batches, y_batches
 
 def load_data(path, mode='train'):
     """
@@ -319,7 +332,6 @@ class Neuralnetwork():
         self.training_acc.append(training_acc)
         self.validation_acc.append(validation_acc)
 
-
 def update_weights(model):
     """
     Update the weights, after back-propagation has happen
@@ -340,22 +352,55 @@ def update_weights(model):
 
 
 def train(model, x_train, y_train, x_valid, y_valid, config):
+#def train(model, x_train, y_train, config):
     """
     Train your model here.
     Implement batch SGD to train the model.
     Implement Early Stopping.
     Use config to set parameters for training like learning rate, momentum, etc.
     """
+    #break data into 128-size batches for small batch gradient descent
+    x_batches, y_batches = mini_batch(x_train, y_train)
+
+    #number of times the error can increase before ending training
+    sensitivity = 3
+
+    #store current-best model
+    #best_model = model
+
+    training_complete = False
     for epoch in range(config['epochs']):
-        model.forward(x_train, y_train)
-        model.backward()
+        while training_complete == False:
+            #for each batch
+            for i in range(len(x_batches)):
+                model.forward(x_batches[i], y_batches[i])
+                model.backward()
 
-        model.log_metrics(val_loss, val_acc)
+            if epoch >= 4:
+                #if model gets worse
+                '''
+                a = validation_accuracies[-1] < validation_accuracies[-2]
+                b = validation_accuracies[-2] < validation_accuracies[-3]
+                c = validation_accuracies[-3] < validation_accuracies[-4]
+                '''
+                if model.validation_increments > sensitivity:
+                    training_complete = True
 
+    '''
+    # update weights:
+    v = 0
 
-
-
-
+    for layer in model.layers:
+        if isinstance(layer, Layer):
+            learning_rate = config['learning_rate']
+            if config['momentum']:
+                momentum_gamma = config['momentum_gamma']
+                v = momentum_gamma * v + (1 - momentum_gamma) * layer.d_w
+                layer.w += learning_rate * v * config['L2_penalty']
+            else:
+                layer.w += learning_rate * layer.d_w * config['L2_penalty']
+            layer.b += learning_rate * layer.d_b
+    '''
 
 def test(model, X_test, y_test):
     """
@@ -364,12 +409,12 @@ def test(model, X_test, y_test):
     loss, predictions = model.forward(X_test, y_test)
     targets = np.argmax(y_test, axis=-1)
     predictions = np.argmax(predictions, axis=-1)
-    return np.sum(targets == predictions) / len(y_test)
+    return loss, (np.sum(targets == predictions) / len(y_test))
 
 
 if __name__ == "__main__":
     # Load the configuration.
-    config = load_config("./")
+    config = load_config("b")
 
     # Create the model
     model = Neuralnetwork(config)
@@ -379,12 +424,16 @@ if __name__ == "__main__":
     x_test, y_test = load_data(path="./", mode="t10k")
 
     # Create splits for validation data here.
+    num_examples = len(x_train)
+    print("# examples:", num_examples)
+
+
+    # train the model
+    #train(model, x_train, y_train, x_valid, y_valid, config)
     size = len(x_train)
     validation_size = 0.9
     x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
     x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
 
-    # train the model
-    train(model, x_train, y_train, x_valid, y_valid, config)
-
+    train(model, x_train, y_train, config)
     test_acc = test(model, x_test, y_test)
