@@ -442,17 +442,38 @@ def task_c():
     num_examples = len(x_train)
     print("# examples:", num_examples)
 
-    #perform k fold
+    #Hold the values from each model that we will graph
+    ten_training_losses = []
+    ten_training_accuracies = []
+    ten_validation_losses = []
+    ten_validation_accuracies = []
+
+    #store best model for test set
+    best_model = model
+
+    #perform k fold 10 times:
+    K = 10
+    for k in range(K): #for each fold
+        X = []
+        y = []
+        k_size = len(x_train) / K
+        for i in range(k_size): #get folds of size 1/K)
+            r = np.random.randint(num_examples)
+            if x_train[r] not in X: #insert random pairs if not already present
+                X.append(x_train[r])
+                y.append(y_train[r])
+
         # create validation set
         size = len(x_train)
         validation_size = 0.9
-        x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
-        x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
-
+        Xv, Yv = X[int(size * validation_size):], y[int(size * validation_size):]
+        Xt, yt = X[:int(size * validation_size)], y[:int(size * validation_size)]
         #train the model
-        train(model, x_train, y_train, x_valid, y_valid, config)
+        train(model, Xt, yt, Xv, yv, config)
+        #append the values of each model to their lists
+        #figure out how to store best model
 
-    test_acc = test(model, x_test, y_test)
+    test_acc = test(best_model, x_test, y_test)
 if __name__ == "__main__":
     #task_b()
     task_c()
