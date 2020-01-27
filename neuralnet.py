@@ -16,15 +16,12 @@ import os, gzip
 import yaml
 import numpy as np
 
-train_std = None
-train_mean = None
 
-
-def load_config(path):
+def load_config(path, config_name='config.yaml'):
     """
     Load the configuration from config.yaml.
     """
-    return yaml.load(open('config.yaml', 'r'), Loader=yaml.SafeLoader)
+    return yaml.load(open(config_name, 'r'), Loader=yaml.SafeLoader)
 
 
 def normalize_data(img):
@@ -32,6 +29,8 @@ def normalize_data(img):
     Normalize your inputs here and return them.
     """
 
+    print(train_mean)
+    print(train_std)
     return (img - train_mean) / train_std
 
 
@@ -60,6 +59,7 @@ def load_data(path, mode='train'):
     with gzip.open(images_path, 'rb') as imgpath:
         images = np.frombuffer(imgpath.read(), dtype=np.uint8, offset=16).reshape(len(labels), 784)
     if mode == 'train':
+        global train_mean, train_std
         train_mean = np.mean(images)
         train_std = np.std(images)
 
@@ -252,6 +252,7 @@ class Neuralnetwork():
         self.validation_loss = []
         self.training_acc = []
         self.validation_acc = []
+        self.validation_increments = 0
 
         # Add layers specified by layer_specs.
         for i in range(len(config['layer_specs']) - 1):
@@ -279,7 +280,7 @@ class Neuralnetwork():
 
         self.targets = targets
         if targets is not None:
-            return self.loss(self.x, targets), self.y
+            return self.loss(self.y, targets), self.y
 
         return None, self.y
 
@@ -287,10 +288,10 @@ class Neuralnetwork():
         '''
         compute the categorical cross-entropy loss and return it.
         '''
-        loss = 1 / 2 * np.sum(targets.reshape(-1, 1) * np.log(logits + 0.0000000001), axis=0) / logits.shape[0]
+        loss = 0.5 * np.sum(targets * np.log(logits + 0.0000000001), axis=0, keepdims=True) / logits.shape[0]
 
         # L2 loss:
-        l2_penalty = config['L2_penalty']
+        l2_penalty = self.config['L2_penalty']
         for layer in self.layers:
             if isinstance(layer, Layer):
                 loss += l2_penalty / 2 * np.sum(layer.w ** 2)
@@ -308,11 +309,34 @@ class Neuralnetwork():
             delta = layer.backward(delta)
 
     def log_metrics(self, training_loss, validation_loss, training_acc, validation_acc):
+        if len(self.validation_loss) > 0 and validation_loss > self.validation_loss[-1]:
+            self.validation_increments += 1
+        else:
+            self.validation_increments = 0
+
         self.training_loss.append(training_loss)
         self.validation_loss.append(validation_loss)
         self.training_acc.append(training_acc)
         self.validation_acc.append(validation_acc)
 
+
+def update_weights(model):
+    """
+    Update the weights, after back-propagation has happen
+
+    @param model: model to update weights on
+    """
+    v = 0
+    for layer in model.layers:
+        if isinstance(layer, Layer):
+            learning_rate = config['learning_rate']
+            if config['momentum']:
+                momentum_gamma = config['momentum_gamma']
+                v = momentum_gamma * v + (1 - momentum_gamma) * layer.d_w
+                layer.w += learning_rate * v * config['L2_penalty']
+            else:
+                layer.w += learning_rate * layer.d_w * config['L2_penalty']
+            layer.b += learning_rate * layer.d_b
 
 
 def train(model, x_train, y_train, x_valid, y_valid, config):
@@ -326,19 +350,11 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
         model.forward(x_train, y_train)
         model.backward()
 
-    # update weights:
-    v = 0
+        model.log_metrics(val_loss, val_acc)
 
-    for layer in model.layers:
-        if isinstance(layer, Layer):
-            learning_rate = config['learning_rate']
-            if config['momentum']:
-                momentum_gamma = config['momentum_gamma']
-                v = momentum_gamma * v + (1 - momentum_gamma) * layer.d_w
-                layer.w += learning_rate * v * config['L2_penalty']
-            else:
-                layer.w += learning_rate * layer.d_w * config['L2_penalty']
-            layer.b += learning_rate * layer.d_b
+
+
+
 
 
 def test(model, X_test, y_test):
