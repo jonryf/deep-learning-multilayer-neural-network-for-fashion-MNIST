@@ -363,28 +363,30 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
     x_batches, y_batches = mini_batch(x_train, y_train)
 
     #number of times the error can increase before ending training
-    sensitivity = 3
+    threshold = 3
 
     #store current-best model
     #best_model = model
 
     training_complete = False
     for epoch in range(config['epochs']):
-        while training_complete == False:
-            #for each batch
+        if training_complete == False:
+            #for each batch in one epoch
             for i in range(len(x_batches)):
                 model.forward(x_batches[i], y_batches[i])
                 model.backward()
+            tl, ta = test(model, x_train, y_train)
+            vl, va = test(model, x_valid, y_valid)
 
+            #track values across each epoch
+            model.log_metrics((tl, vl, ta, va))
+
+            #early stopping condition
             if epoch >= 4:
-                #if model gets worse
-                '''
-                a = validation_accuracies[-1] < validation_accuracies[-2]
-                b = validation_accuracies[-2] < validation_accuracies[-3]
-                c = validation_accuracies[-3] < validation_accuracies[-4]
-                '''
-                if model.validation_increments > sensitivity:
+                if model.valdation_increments > threshold:
                     training_complete = True
+
+
 
     '''
     # update weights:
@@ -409,10 +411,11 @@ def test(model, X_test, y_test):
     loss, predictions = model.forward(X_test, y_test)
     targets = np.argmax(y_test, axis=-1)
     predictions = np.argmax(predictions, axis=-1)
-    return loss, (np.sum(targets == predictions) / len(y_test))
+    accuracy = np.sum(targets == predictions) / len(y_test)
+    return loss, accuracy
 
-
-if __name__ == "__main__":
+def task_b():
+    ###############################
     # Load the configuration.
     config = load_config("b")
 
@@ -428,12 +431,48 @@ if __name__ == "__main__":
     print("# examples:", num_examples)
 
 
-    # train the model
-    #train(model, x_train, y_train, x_valid, y_valid, config)
+    # create validation set
     size = len(x_train)
     validation_size = 0.9
     x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
     x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
 
-    train(model, x_train, y_train, config)
+    #train the model
+    #train(model, x_train, y_train, x_valid, y_valid, config)
+
     test_acc = test(model, x_test, y_test)
+
+def task_c():
+    ###############################
+    # Load the configuration.
+    config = load_config("b")
+
+    # Create the model
+    model = Neuralnetwork(config)
+
+    # Load the data
+    x_train, y_train = load_data(path="./", mode="train")
+    x_test, y_test = load_data(path="./", mode="t10k")
+
+    # Create splits for validation data here.
+    num_examples = len(x_train)
+    print("# examples:", num_examples)
+
+
+    # create validation set
+    size = len(x_train)
+    validation_size = 0.9
+    x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
+    x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
+
+    #train the model
+    train(model, x_train, y_train, x_valid, y_valid, config)
+
+    test_acc = test(model, x_test, y_test)
+if __name__ == "__main__":
+    #task_b()
+    task_c()
+    #task_d()
+    #task_e()
+    #task_f()
+
