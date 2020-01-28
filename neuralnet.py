@@ -65,11 +65,12 @@ def mini_batch(x, y, size):  # returns data split into 128-max batches (leaves o
     y_batches = []
 
     data = list(zip(x, y))
+    random.shuffle(data)
+
     x, y = zip(*data)
     x = np.array(x)
     y = np.array(y)
 
-    random.shuffle(data)
     for i in range(num_batches - 1):
         x_batches.append(x[i * size: (i + 1) * size])
         y_batches.append(y[i * size: (i + 1) * size])
@@ -394,8 +395,6 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
     @param y_valid:
     @param config:
     """
-    # break data into 128-size batches for small batch gradient descent
-    x_batches, y_batches = mini_batch(x_train, y_train, config['batch_size'])
 
     # number of times the error can increase before ending training
     threshold = config['early_stop_epoch']
@@ -403,23 +402,26 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
     # store current-best model
     # best_model = model
 
-    training_complete = False
     for epoch in range(config['epochs']):
-        if training_complete == False:
-            # for each batch in one epoch
-            for i in range(len(x_batches)):
-                model.forward(x_batches[i], y_batches[i])
-                model.backward()
-                model.update_weights()  # implements momentum and regularization
+        # for each batch in one epoch
+        # break data into 128-size batches for small batch gradient descent
+        x_batches, y_batches = mini_batch(x_train, y_train, config['batch_size'])
 
-            # track metrics across each epoch
-            tl, ta = test(model, x_train, y_train)
-            vl, va = test(model, x_valid, y_valid)
-            model.log_metrics(tl, vl, ta, va)
+        for i in range(len(x_batches)):
+            model.forward(x_batches[i], y_batches[i])
+            model.backward()
+            model.update_weights()  # implements momentum and regularization
 
-            # early stopping condition
-            if config['early_stop'] and epoch >= 4 and model.validation_increments > threshold:
-                training_complete = True
+        # track metrics across each epoch
+        tl, ta = test(model, x_train, y_train)
+        vl, va = test(model, x_valid, y_valid)
+        model.log_metrics(tl, vl, ta, va)
+
+        # early stopping condition
+        if config['early_stop'] and epoch >= 4 and model.validation_increments > threshold:
+            break
+        if epoch % 10 == 0:
+            print("Running epoch {}".format(epoch + 1))
 
 
 def test(model, X_test, y_test):
