@@ -16,6 +16,8 @@ import os, gzip
 import yaml
 import numpy as np
 import math
+import timeit
+
 
 from utils import plot
 
@@ -392,6 +394,7 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
             if epoch >= 4 and model.validation_increments > threshold:
                 training_complete = True
 
+
 def test(model, X_test, y_test):
     """
     Calculate and return the accuracy on the test set.
@@ -425,39 +428,76 @@ def task_b():
     # create validation set
     size = len(x_train)
     validation_size = 0.9
-    x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
     x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
+    x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
 
     #train the model
     #train(model, x_train, y_train, x_valid, y_valid, config)
 
     test_acc = test(model, x_test, y_test)
 
-# def task_c():
-#     ###############################
-#     # Load the configuration.
-#     config = load_config("b")
-#
-#     # Create the model
-#     model = Neuralnetwork(config)
-#     # Load the data
-#     x_train, y_train = load_data(path="./", mode="train")
-#     x_test, y_test = load_data(path="./", mode="t10k")
-#
-#     num_examples = len(x_train)
-#     print("# examples:", num_examples)
-#
-#     #perform k fold
-#         # create validation set
-#         size = len(x_train)
-#         validation_size = 0.9
-#         x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
-#         x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
-#
-#         #train the model
-#         train(model, x_train, y_train, x_valid, y_valid, config)
-#
-#     test_acc = test(model, x_test, y_test)
+def task_c():
+
+    ###############################
+    # Load the configuration.
+    config = load_config("c")
+
+    # Create the model
+    model = Neuralnetwork(config)
+    # Load the data
+    x_train, y_train = load_data(path="./", mode="train")
+    x_test, y_test = load_data(path="./", mode="t10k")
+
+    num_examples = len(x_train)
+    print("# examples:", num_examples)
+
+    #Hold the values from each model that we will graph
+    ten_training_losses = []
+    ten_training_accuracies = []
+    ten_validation_losses = []
+    ten_validation_accuracies = []
+
+    #store best model for test set
+    best_model = model
+    #hack to fix error
+    best_model.validation_loss.append(100)
+
+    #perform k fold 10 times:
+    K = 10
+    for k in range(K): #for each fold
+        print("K value: ", k)
+        model = Neuralnetwork(config)
+        X = []
+        y = []
+        k_size = int(len(x_train) / K)
+        for i in range(k_size): #get folds of size 1/K)
+            r = np.random.randint(num_examples)
+            #if not(x_train[r] in X): #insert random pairs if not already present
+            X.append(x_train[r])
+            y.append(y_train[r])
+        X = np.array(X)
+        y = np.array(y)
+        # create validation set
+        size = len(x_train)
+        validation_size = 0.9
+        Xv, yv = X[int(size * validation_size):], y[int(size * validation_size):]
+        Xt, yt = X[:int(size * validation_size)], y[:int(size * validation_size)]
+        #train the model
+        train(model, Xt, yt, Xv, yv, config)
+
+        #append the values of each model to their lists
+        ten_training_accuracies.append(model.training_acc)
+        ten_training_losses.append(model.training_loss)
+        ten_validation_accuracies.append(model.validation_acc)
+        ten_validation_losses.append(model.validation_loss)
+
+        #Store best model
+        if model.validation_loss[-1] < best_model.validation_loss[-1]:
+            best_model = model
+
+    test_loss, test_acc = test(best_model, x_test, y_test)
+    print("Test accuracy of best model: ", test_acc)
+    plot(model)
 
 def task_d():
     config = load_config("d")
@@ -479,8 +519,8 @@ def task_d():
 
 if __name__ == "__main__":
     #task_b()
-    #task_c()
-    task_d()
+    task_c()
+    #task_d()
     #task_e()
     #task_f()
 
