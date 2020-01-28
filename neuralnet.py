@@ -18,7 +18,6 @@ import numpy as np
 import math
 import timeit
 
-
 from utils import plot
 
 train_std = None
@@ -52,16 +51,18 @@ def one_hot_encoding(labels, num_classes=10):
         one_hot_labels.append(ohe)
     return np.array(one_hot_labels)
 
-def mini_batch(x, y): #returns data split into 128-max batches (leaves out remainder)
+
+def mini_batch(x, y):  # returns data split into 128-max batches (leaves out remainder)
     if len(x) < 128:
         return x, y
     num_batches = math.floor(len(x) / 128)
     x_batches = []
     y_batches = []
-    for i in range(num_batches-1):
-        x_batches.append(x[i*128: (i+1)*128])
-        y_batches.append(y[i*128: (i+1)*128])
+    for i in range(num_batches - 1):
+        x_batches.append(x[i * 128: (i + 1) * 128])
+        y_batches.append(y[i * 128: (i + 1) * 128])
     return x_batches, y_batches
+
 
 def load_data(path, mode='train'):
     """
@@ -352,46 +353,52 @@ class Neuralnetwork():
                         layer.v = layer.d_w
                     momentum_gamma = self.config['momentum_gamma']
                     layer.v = momentum_gamma * layer.v + (1 - momentum_gamma) * layer.d_w
-                    layer.w += learning_rate * (layer.v + self.config['L2_penalty'] * layer.w)
+                    layer.w += learning_rate * (layer.v - self.config['L2_penalty'] * layer.w)
                 else:
-                    layer.w += learning_rate * (layer.d_w + self.config['L2_penalty'] * layer.w)
+                    layer.w += learning_rate * (layer.d_w - self.config['L2_penalty'] * layer.w)
 
                 layer.b += learning_rate * layer.d_b
 
 
 def train(model, x_train, y_train, x_valid, y_valid, config):
-#def train(model, x_train, y_train, config):
     """
     Train your model here.
     Implement batch SGD to train the model.
     Implement Early Stopping.
     Use config to set parameters for training like learning rate, momentum, etc.
+
+    @param model:
+    @param x_train:
+    @param y_train:
+    @param x_valid:
+    @param y_valid:
+    @param config:
     """
-    #break data into 128-size batches for small batch gradient descent
+    # break data into 128-size batches for small batch gradient descent
     x_batches, y_batches = mini_batch(x_train, y_train)
 
-    #number of times the error can increase before ending training
-    threshold = 3
+    # number of times the error can increase before ending training
+    threshold = config['early_stop_epoch']
 
-    #store current-best model
-    #best_model = model
+    # store current-best model
+    # best_model = model
 
     training_complete = False
     for epoch in range(config['epochs']):
         if training_complete == False:
-            #for each batch in one epoch
+            # for each batch in one epoch
             for i in range(len(x_batches)):
                 model.forward(x_batches[i], y_batches[i])
                 model.backward()
-                model.update_weights() #implements momentum and regularization
+                model.update_weights()  # implements momentum and regularization
 
             # track metrics across each epoch
             tl, ta = test(model, x_train, y_train)
             vl, va = test(model, x_valid, y_valid)
             model.log_metrics(tl, vl, ta, va)
 
-            #early stopping condition
-            if epoch >= 4 and model.validation_increments > threshold:
+            # early stopping condition
+            if config['early_stop'] and epoch >= 4 and model.validation_increments > threshold:
                 training_complete = True
 
 
@@ -405,8 +412,10 @@ def test(model, X_test, y_test):
     accuracy = np.sum(targets == predictions) / len(y_test)
     return loss, accuracy
 
+
 def split_x_v(data):
     pass
+
 
 def task_b():
     ###############################
@@ -422,8 +431,7 @@ def task_b():
 
     # Create splits for validation data here.
     num_examples = len(x_train)
-    #print("# examples:", num_examples)
-
+    # print("# examples:", num_examples)
 
     # create validation set
     size = len(x_train)
@@ -431,13 +439,13 @@ def task_b():
     x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
     x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
 
-    #train the model
-    #train(model, x_train, y_train, x_valid, y_valid, config)
+    # train the model
+    # train(model, x_train, y_train, x_valid, y_valid, config)
 
     test_acc = test(model, x_test, y_test)
 
-def task_c():
 
+def task_c():
     ###############################
     # Load the configuration.
     config = load_config("c")
@@ -451,28 +459,28 @@ def task_c():
     num_examples = len(x_train)
     print("# examples:", num_examples)
 
-    #Hold the values from each model that we will graph
+    # Hold the values from each model that we will graph
     ten_training_losses = []
     ten_training_accuracies = []
     ten_validation_losses = []
     ten_validation_accuracies = []
 
-    #store best model for test set
+    # store best model for test set
     best_model = model
-    #hack to fix error
+    # hack to fix error
     best_model.validation_loss.append(100)
 
-    #perform k fold 10 times:
+    # perform k fold 10 times:
     K = 10
-    for k in range(K): #for each fold
+    for k in range(K):  # for each fold
         print("K value: ", k)
         model = Neuralnetwork(config)
         X = []
         y = []
         k_size = int(len(x_train) / K)
-        for i in range(k_size): #get folds of size 1/K)
+        for i in range(k_size):  # get folds of size 1/K)
             r = np.random.randint(num_examples)
-            #if not(x_train[r] in X): #insert random pairs if not already present
+            # if not(x_train[r] in X): #insert random pairs if not already present
             X.append(x_train[r])
             y.append(y_train[r])
         X = np.array(X)
@@ -482,22 +490,23 @@ def task_c():
         validation_size = 0.9
         Xv, yv = X[int(size * validation_size):], y[int(size * validation_size):]
         Xt, yt = X[:int(size * validation_size)], y[:int(size * validation_size)]
-        #train the model
+        # train the model
         train(model, Xt, yt, Xv, yv, config)
 
-        #append the values of each model to their lists
+        # append the values of each model to their lists
         ten_training_accuracies.append(model.training_acc)
         ten_training_losses.append(model.training_loss)
         ten_validation_accuracies.append(model.validation_acc)
         ten_validation_losses.append(model.validation_loss)
 
-        #Store best model
+        # Store best model
         if model.validation_loss[-1] < best_model.validation_loss[-1]:
             best_model = model
 
     test_loss, test_acc = test(best_model, x_test, y_test)
     print("Test accuracy of best model: ", test_acc)
     plot(model)
+
 
 def task_d():
     config = load_config("d")
@@ -516,11 +525,9 @@ def task_d():
     print("Test accuracy: {}".format(test_acc))
 
 
-
 if __name__ == "__main__":
-    #task_b()
-    task_c()
-    #task_d()
-    #task_e()
-    #task_f()
-
+    # task_b()
+    # task_c()
+    task_d()
+    # task_e()
+    # task_f()
