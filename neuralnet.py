@@ -16,6 +16,8 @@ import os, gzip
 import yaml
 import numpy as np
 import math
+import timeit
+
 
 from utils import plot
 
@@ -340,13 +342,19 @@ class Neuralnetwork():
 
         @param model: model to update weights on
         """
-        v = 0
+        v = 1
         for layer in self.layers:
             if isinstance(layer, Layer):
                 learning_rate = self.config['learning_rate']
                 if self.config['momentum']:
                     momentum_gamma = self.config['momentum_gamma']
-                    v = momentum_gamma * v + (1 - momentum_gamma) * layer.d_w
+
+
+
+                    v = layer.d_w * (1 - momentum_gamma) + momentum_gamma * v
+
+
+
                     layer.w += learning_rate * v * self.config['L2_penalty']
                 else:
                     layer.w += learning_rate * layer.d_w * self.config['L2_penalty']
@@ -388,16 +396,17 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
             if epoch >= 4 and model.validation_increments > threshold:
                 training_complete = True
 
+
 def test(model, X_test, y_test):
     """
     Calculate and return the accuracy on the test set.
     """
     loss, predictions = model.forward(X_test, y_test)
-    print(y_test.shape)
+    #print(y_test.shape)
     targets = np.argmax(y_test, axis=-1)
     predictions = np.argmax(predictions, axis=-1)
-    accuracy = np.sum(targets == predictions) / len(y_test)
-    print(accuracy)
+    accuracy = np.sum(targets == predictions) / np.float(len(y_test))
+    #print(accuracy)
     return loss, accuracy
 
 def split_x_v(data):
@@ -432,9 +441,10 @@ def task_b():
     test_acc = test(model, x_test, y_test)
 
 def task_c():
+
     ###############################
     # Load the configuration.
-    config = load_config("b")
+    config = load_config("c")
 
     # Create the model
     model = Neuralnetwork(config)
@@ -453,19 +463,24 @@ def task_c():
 
     #store best model for test set
     best_model = model
+    #hack to fix error
+    best_model.validation_loss.append(100)
 
     #perform k fold 10 times:
     K = 10
     for k in range(K): #for each fold
+        print("K value: ", k)
+        model = Neuralnetwork(config)
         X = []
         y = []
-        k_size = len(x_train) / K
+        k_size = int(len(x_train) / K)
         for i in range(k_size): #get folds of size 1/K)
             r = np.random.randint(num_examples)
-            if x_train[r] not in X: #insert random pairs if not already present
-                X.append(x_train[r])
-                y.append(y_train[r])
-
+            #if not(x_train[r] in X): #insert random pairs if not already present
+            X.append(x_train[r])
+            y.append(y_train[r])
+        X = np.array(X)
+        y = np.array(y)
         # create validation set
         size = len(x_train)
         validation_size = 0.9
@@ -473,10 +488,20 @@ def task_c():
         Xt, yt = X[:int(size * validation_size)], y[:int(size * validation_size)]
         #train the model
         train(model, Xt, yt, Xv, yv, config)
-        #append the values of each model to their lists
-        #figure out how to store best model
 
-    test_acc = test(best_model, x_test, y_test)
+        #append the values of each model to their lists
+        ten_training_accuracies.append(model.training_acc)
+        ten_training_losses.append(model.training_loss)
+        ten_validation_accuracies.append(model.validation_acc)
+        ten_validation_losses.append(model.validation_loss)
+        
+        #Store best model
+        if model.validation_loss[-1] < best_model.validation_loss[-1]:
+            best_model = model
+
+    test_loss, test_acc = test(best_model, x_test, y_test)
+    print("Test accuracy of best model: ", test_acc)
+    plot(model)
 
 def task_d():
     config = load_config("d")
@@ -493,8 +518,8 @@ def task_d():
     plot(model)
 if __name__ == "__main__":
     #task_b()
-    #task_c()
-    task_d()
+    task_c()
+    #task_d()
     #task_e()
     #task_f()
 
