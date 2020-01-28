@@ -13,7 +13,7 @@ def graph_plot(data, labels, legends, title=""):
     x = np.arange(1, len(data[0]) + 1)
     for to_plot in data:
         plt.plot(x, to_plot)
-    plt.title = title
+    plt.title(title)
     plt.xlabel(labels[0])
     plt.ylabel(labels[1])
     plt.legend(legends)
