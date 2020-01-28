@@ -574,21 +574,23 @@ def task_c():
     print("Test accuracy of best model: ", test_acc)
 
 def task_d():
-    config = load_config("d")
-    model = Neuralnetwork(config)
-    x_train, y_train = load_data(path="./", mode="train")
-    x_test, y_test = load_data(path="./", mode="t10k")
+    d_configs = ["d1", "d2"]
+    titles = ["0.001 Regularization", "0.0001 Regularization"]
+    for i in range(2):
+        config = load_config(d_configs[i])
+        model = Neuralnetwork(config)
+        x_train, y_train = load_data(path="./", mode="train")
+        x_test, y_test = load_data(path="./", mode="t10k")
 
-    train_size = 0.9
-    size = len(x_train)
-    x_valid, y_valid = x_train[int(size * train_size):], y_train[int(size * train_size):]
-    x_train, y_train = x_train[:int(size * train_size)], y_train[:int(size * train_size)]
+        train_size = 0.9
+        size = len(x_train)
+        x_valid, y_valid = x_train[int(size * train_size):], y_train[int(size * train_size):]
+        x_train, y_train = x_train[:int(size * train_size)], y_train[:int(size * train_size)]
 
-    train(model, x_train, y_train, x_valid, y_valid, config)
-    plot(model)
-    test_acc = test(model, x_test, y_test)
-    print("Test accuracy: {}".format(test_acc))
-
+        train(model, x_train, y_train, x_valid, y_valid, config)
+        plot(model, titles[i])
+        test_acc = test(model, x_test, y_test)
+        print("Test accuracy: {}".format(test_acc))
 
 def task_e():
     pass
@@ -615,5 +617,5 @@ if __name__ == "__main__":
         elif task == 'q':
             print("Ending Program")
         else:
-            print("invalid entry - select  from b,c,d,e,f")
+            print("invalid entry - select  from {b,c,d,e,f}")
 

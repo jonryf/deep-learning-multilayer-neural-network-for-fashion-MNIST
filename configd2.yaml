@@ -11,8 +11,8 @@ learning_rate: 0.005
 batch_size: 128
 
 # Number of epochs to train the model
-#task c ended at 20 epochs - 10% more here would be 22
-epochs: 22
+#task c ended at 31 epochs - 10% more here would be 34
+epochs: 34
 
 # Flag to enable early stopping
 early_stop: False
@@ -21,7 +21,7 @@ early_stop: False
 early_stop_epoch: 100
 
 # Regularization constant
-L2_penalty: 0.001
+L2_penalty: 0.0001
 
 # Use momentum for training
 momentum: True

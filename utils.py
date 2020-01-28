@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def graph_plot(data, labels, legends):
+def graph_plot(data, labels, legends, title=""):
     """
     Plot multiple graphs in same plot
 
@@ -13,12 +13,13 @@ def graph_plot(data, labels, legends):
     x = np.arange(1, len(data[0]) + 1)
     for to_plot in data:
         plt.plot(x, to_plot)
+    plt.title = title
     plt.xlabel(labels[0])
     plt.ylabel(labels[1])
     plt.legend(legends)
     plt.show()
 
-def plot(model):
+def plot(model, title=""):
     """
     Plot loss and accuracy graphs
 
@@ -26,11 +27,11 @@ def plot(model):
     """
     # plot the loss
     graph_plot([model.training_loss, model.validation_loss],
-               ["Epoch", "Cross-entropy loss"], ["Training loss", "Validation loss"])
+               ["Epoch", "Cross-entropy loss"], ["Training loss", "Validation loss"], title)
 
     # plot the accuracy
     graph_plot([model.training_acc, model.validation_acc],
-               ["Epoch", "Accuracy"], ["Training accuracy", "Validation accuracy"])
+               ["Epoch", "Accuracy"], ["Training accuracy", "Validation accuracy"], title)
 
 
 def numerical_approximation(x_data, y_data, model, layer_idx, node_idx, col, bias=False):
