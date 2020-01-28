@@ -62,7 +62,12 @@ def mini_batch(x, y, size):  # returns data split into 128-max batches (leaves o
     x_batches = []
     y_batches = []
 
+    data = list(zip(x, y))
+    x, y = zip(*data)
+    x = np.array(x)
+    y = np.array(y)
 
+    random.shuffle(data)
     for i in range(num_batches - 1):
         x_batches.append(x[i * size: (i + 1) * size])
         y_batches.append(y[i * size: (i + 1) * size])
@@ -427,6 +432,8 @@ def test(model, X_test, y_test):
 
 
 def task_b():
+    ###############################
+    # Load the configuration.
     config = load_config("b")
 
     num_of_examples = 12
@@ -441,16 +448,20 @@ def task_b():
     # bias output weight
     numerical_approximation(x_train, y_train, model, 4, 0, 0, bias=True)
 
-    # bias hidden weight
-    numerical_approximation(x_train, y_train, model, 2, 0, 6, bias=True)
+    # Create splits for validation data here.
+    num_examples = len(x_train)
+    # print("# examples:", num_examples)
 
-    # hidden weights
-    numerical_approximation(x_train, y_train, model, 2, 2, 2)
-    numerical_approximation(x_train, y_train, model, 2, 3, 5)
+    # create validation set
+    size = len(x_train)
+    validation_size = 0.9
+    x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
+    x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
 
-    # inputs to hidden weights
-    numerical_approximation(x_train, y_train, model, 0, 0, 2)
-    numerical_approximation(x_train, y_train, model, 0, 0, 1)
+    # train the model
+    # train(model, x_train, y_train, x_valid, y_valid, config)
+
+    test_acc = test(model, x_test, y_test)
 
 
 def task_c():
@@ -489,8 +500,8 @@ def task_c():
         for i in range(k_size):  # get folds of size 1/K)
             r = np.random.randint(num_examples)
             # if not(x_train[r] in X): #insert random pairs if not already present
-            X.append(x_train[(i+k) % K])
-            y.append(y_train[(i+k) % K])
+            X.append(x_train[r])
+            y.append(y_train[r])
         X = np.array(X)
         y = np.array(y)
         # create validation set
@@ -520,7 +531,6 @@ def task_d():
     config = load_config("d")
     model = Neuralnetwork(config)
     x_train, y_train = load_data(path="./", mode="train")
-
     x_test, y_test = load_data(path="./", mode="t10k")
 
     train_size = 0.9
@@ -534,28 +544,9 @@ def task_d():
     print("Test accuracy: {}".format(test_acc))
 
 
-def task_e():
-    pass
-
-
-def task_f():
-    pass
-
-
 if __name__ == "__main__":
-    task = ''
-    while task != 'q':
-        task = input("Choose your task - lowercase letter: ")
-        if task == 'b':
-            task_b()
-        elif task == 'c':
-            task_c()
-        elif task == 'd':
-            task_d()
-        elif task == 'e':
-            task_e()
-        elif task == 'f':
-            task_f()
-        else:
-            print("invalid entry - select  from b,c,d,e,f")
-    print("Ending Program")
+    # task_b()
+    # task_c()
+    task_d()
+    # task_e()
+    # task_f()
