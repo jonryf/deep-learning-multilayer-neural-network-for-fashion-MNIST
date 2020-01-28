@@ -22,6 +22,8 @@ import timeit
 import io
 
 from utils import plot, numerical_approximation
+from matplotlib import pyplot as plt
+from utils import plot
 
 train_std = None
 train_mean = None
@@ -505,7 +507,7 @@ def task_c():
         X = np.array(X)
         y = np.array(y)
         # create validation set
-        size = len(x_train)
+        size = len(X)
         validation_size = 0.9
         Xv, yv = X[int(size * validation_size):], y[int(size * validation_size):]
         Xt, yt = X[:int(size * validation_size)], y[:int(size * validation_size)]
@@ -521,11 +523,52 @@ def task_c():
         # Store best model
         if model.validation_loss[-1] < best_model.validation_loss[-1]:
             best_model = model
+    ### Report training and validation accuracy and loss for each K
+    #plot(model)
 
+    #find the minimum epoch number to convergence:
+    lengths = []
+    for item in ten_validation_losses:
+        lengths.append(len(item))
+    cutoff = min(lengths)
+
+    #align the losses and accuracy by cutoff value
+    aligned_training_losses = np.array([x[:cutoff] for x in ten_training_losses])
+    aligned_training_accuracies = np.array([x[:cutoff] for x in ten_training_accuracies])
+    aligned_validation_losses = np.array([x[:cutoff] for x in ten_validation_losses])
+    aligned_validation_accuracies = np.array([x[:cutoff] for x in ten_validation_accuracies])
+
+    #plot the data
+    aligned_data = [aligned_training_losses, aligned_training_accuracies, aligned_validation_losses, aligned_validation_accuracies]
+    aligned_titles = ["Aligend Training Losses", "Aligned Training Accuracies", "Aligned Validation Losses", "Aligned Validation Accuracies"]
+    aligned_ylables = ["Cross Entropy Error", "Accuracy", "Cross Entropy Error", "Accuracy"]
+    for i in range(len(aligned_data)):
+        data = aligned_data[i]
+        print("Data shape:", data.shape)
+        mean = np.mean(data, axis=0)  # divide sum of columns by num of folds
+        print("mean shape:", mean.shape)
+        print(mean)
+        std = np.std(data, axis=0)
+        print("Std shape:", std.shape)
+        print(std)
+        '''
+        y_std = []
+        for i in range(len(mean)):
+            if (i + 1) % 10 == 0 or i == 0:
+                y_std.append(np.std(data[:, i]))
+            else:
+                y_std.append(0)
+        '''
+        plt.errorbar(np.arange(1, len(mean)+1), mean, yerr=std)
+        plt.title(aligned_titles[i])
+        plt.ylabel(aligned_ylables[i])
+        plt.xlabel("Epoch")
+        #plt.legend(["Training data", "Validation data"])
+        plt.show()
+
+    ### Report Test Accuracy of best model
     test_loss, test_acc = test(best_model, x_test, y_test)
     print("Test accuracy of best model: ", test_acc)
-    plot(model)
-
 
 def task_d():
     config = load_config("d")
@@ -544,9 +587,30 @@ def task_d():
     print("Test accuracy: {}".format(test_acc))
 
 
+def task_e():
+    pass
+
+
+def task_f():
+    pass
+
+
 if __name__ == "__main__":
-    # task_b()
-    # task_c()
-    task_d()
-    # task_e()
-    # task_f()
+    task = ''
+    while task != 'q':
+        task = input("Choose your task - lowercase letter: ")
+        if task == 'b':
+            task_b()
+        elif task == 'c':
+            task_c()
+        elif task == 'd':
+            task_d()
+        elif task == 'e':
+            task_e()
+        elif task == 'f':
+            task_f()
+        elif task == 'q':
+            print("Ending Program")
+        else:
+            print("invalid entry - select  from b,c,d,e,f")
+
