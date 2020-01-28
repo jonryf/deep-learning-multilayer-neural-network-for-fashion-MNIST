@@ -386,7 +386,7 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
             model.log_metrics(tl, vl, ta, va)
 
             # early stopping condition
-            if config['early_stop'] and epoch >= 4 and model.validation_increments > threshold:
+            if config['early_stop'] == 'True' and epoch >= 4 and model.validation_increments > threshold:
                 training_complete = True
 
 
@@ -507,9 +507,10 @@ def task_c():
 
     #plot the data
     aligned_data = [aligned_training_losses, aligned_training_accuracies, aligned_validation_losses, aligned_validation_accuracies]
-    aligned_titles = ["Aligend Training Losses", "Aligned Training Accuracies", "Aligned Validation Losses", "Aligned Validation Accuracies"]
+    aligned_titles = ["Aligned Training Losses", "Aligned Training Accuracies", "Aligned Validation Losses", "Aligned Validation Accuracies"]
     aligned_ylables = ["Cross Entropy Error", "Accuracy", "Cross Entropy Error", "Accuracy"]
     for i in range(len(aligned_data)):
+        print(aligned_titles[i])
         data = aligned_data[i]
         print("Data shape:", data.shape)
         mean = np.mean(data, axis=0)  # divide sum of columns by num of folds
