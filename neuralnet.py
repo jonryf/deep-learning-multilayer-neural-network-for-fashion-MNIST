@@ -13,11 +13,15 @@
 ################################################################################
 
 import os, gzip
+import random
+
 import yaml
 import numpy as np
 import math
 import timeit
 import io
+
+from utils import plot, numerical_approximation
 from matplotlib import pyplot as plt
 from utils import plot
 
@@ -53,15 +57,23 @@ def one_hot_encoding(labels, num_classes=10):
     return np.array(one_hot_labels)
 
 
-def mini_batch(x, y):  # returns data split into 128-max batches (leaves out remainder)
-    if len(x) < 128:
+def mini_batch(x, y, size):  # returns data split into 128-max batches (leaves out remainder)
+    if len(x) < size:
         return x, y
-    num_batches = math.floor(len(x) / 128)
+    num_batches = math.floor(len(x) / size)
     x_batches = []
     y_batches = []
+
+    data = list(zip(x, y))
+    random.shuffle(data)
+
+    x, y = zip(*data)
+    x = np.array(x)
+    y = np.array(y)
+
     for i in range(num_batches - 1):
-        x_batches.append(x[i * 128: (i + 1) * 128])
-        y_batches.append(y[i * 128: (i + 1) * 128])
+        x_batches.append(x[i * size: (i + 1) * size])
+        y_batches.append(y[i * size: (i + 1) * size])
     return x_batches, y_batches
 
 
@@ -84,6 +96,14 @@ def load_data(path, mode='train'):
 
     normalized_images = normalize_data(images)
     one_hot_labels = one_hot_encoding(labels, num_classes=10)
+
+    data = list(zip(normalized_images, one_hot_labels))
+
+    random.shuffle(data)
+
+    normalized_images, one_hot_labels = zip(*data)
+    normalized_images = np.array(normalized_images)
+    one_hot_labels = np.array(one_hot_labels)
 
     return normalized_images, one_hot_labels
 
@@ -309,7 +329,7 @@ class Neuralnetwork():
         '''
         compute the categorical cross-entropy loss and return it.
         '''
-        loss = -np.sum(np.sum(targets * np.log(logits + 0.0000000001), axis=1, keepdims=True) / logits.shape[0])
+        loss = -np.sum(np.sum(targets * np.log(logits + 0.0000000001), axis=0, keepdims=True) / logits.shape[0])
 
         # L2 loss:
         l2_penalty = self.config['L2_penalty']
@@ -362,8 +382,19 @@ class Neuralnetwork():
 
 
 def train(model, x_train, y_train, x_valid, y_valid, config):
-    # break data into 128-size batches for small batch gradient descent
-    x_batches, y_batches = mini_batch(x_train, y_train)
+    """
+    Train your model here.
+    Implement batch SGD to train the model.
+    Implement Early Stopping.
+    Use config to set parameters for training like learning rate, momentum, etc.
+
+    @param model:
+    @param x_train:
+    @param y_train:
+    @param x_valid:
+    @param y_valid:
+    @param config:
+    """
 
     # number of times the error can increase before ending training
     threshold = config['early_stop_epoch']
@@ -371,23 +402,26 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
     # store current-best model
     # best_model = model
 
-    training_complete = False
     for epoch in range(config['epochs']):
-        if training_complete == False:
-            # for each batch in one epoch
-            for i in range(len(x_batches)):
-                model.forward(x_batches[i], y_batches[i])
-                model.backward()
-                model.update_weights()  # implements momentum and regularization
+        # for each batch in one epoch
+        # break data into 128-size batches for small batch gradient descent
+        x_batches, y_batches = mini_batch(x_train, y_train, config['batch_size'])
 
-            # track metrics across each epoch
-            tl, ta = test(model, x_train, y_train)
-            vl, va = test(model, x_valid, y_valid)
-            model.log_metrics(tl, vl, ta, va)
+        for i in range(len(x_batches)):
+            model.forward(x_batches[i], y_batches[i])
+            model.backward()
+            model.update_weights()  # implements momentum and regularization
 
-            # early stopping condition
-            if config['early_stop'] == 'True' and epoch >= 4 and model.validation_increments > threshold:
-                training_complete = True
+        # track metrics across each epoch
+        tl, ta = test(model, x_train, y_train)
+        vl, va = test(model, x_valid, y_valid)
+        model.log_metrics(tl, vl, ta, va)
+
+        # early stopping condition
+        if config['early_stop'] == 'True' and epoch >= 4 and model.validation_increments > threshold:
+            break
+        if epoch % 10 == 0:
+            print("Running epoch {}".format(epoch + 1))
 
 
 def test(model, X_test, y_test):
@@ -401,21 +435,22 @@ def test(model, X_test, y_test):
     return loss, accuracy
 
 
-def split_x_v(data):
-    pass
-
-
 def task_b():
     ###############################
     # Load the configuration.
     config = load_config("b")
 
+    num_of_examples = 12
+    # load the test data
+    x_train, y_train = load_data(path="./", mode="train")
+    x_train = x_train[:num_of_examples]
+    y_train = y_train[:num_of_examples]
+
     # Create the model
     model = Neuralnetwork(config)
 
-    # Load the data
-    x_train, y_train = load_data(path="./", mode="train")
-    x_test, y_test = load_data(path="./", mode="t10k")
+    # bias output weight
+    numerical_approximation(x_train, y_train, model, 4, 0, 0, bias=True)
 
     # Create splits for validation data here.
     num_examples = len(x_train)
