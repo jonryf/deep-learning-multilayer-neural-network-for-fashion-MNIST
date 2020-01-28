@@ -33,7 +33,7 @@ def plot(model):
                ["Epoch", "Accuracy"], ["Training accuracy", "Validation accuracy"])
 
 
-def numerical_approximation(x_data, y_data, model, layer_idx, node_idx):
+def numerical_approximation(x_data, y_data, model, layer_idx, node_idx, col, bias=False):
     """
 
     @param x_data: some example data
@@ -42,33 +42,40 @@ def numerical_approximation(x_data, y_data, model, layer_idx, node_idx):
     @param layer_idx: index of layer to calculate approximation
     @param node_idx: index of node in layer to calculate approximation
     """
-    eps = 0.001
+    eps = 0.000001
     layer = model.layers[layer_idx]
+
+    vec = layer.b if bias else layer.w
+
     # extract modify weights
     # w + eps
-    layer.w[node_idx] += eps
+    vec[node_idx][col] += eps
 
     # forward pass and calculate loss
     loss_1, _ = model.forward(x_data, y_data)
     # undo
-    layer.w[node_idx] -= eps
+    vec[node_idx][col] -= eps
 
     # w - eps
-    layer.w[node_idx] -= eps
+    vec[node_idx][col] -= eps
 
     # forward pass and calculate loss
     loss_2, _ = model.forward(x_data, y_data)
     # undo
-    layer.w[node_idx] += eps
+    vec[node_idx][col] += eps
 
     # backprop
     model.forward(x_data, y_data)
     model.backward()
 
     numerical_grad = ((loss_1 - loss_2) / (2 * eps))
-    backprop_grad = layer.d_w[0][0]
-    print(backprop_grad.shape)
-    #print("Gradient difference: {}".format(numerical_grad-backprop_grad))
+    # Attention: Loss is divided by number of images, therefore multiplied by it here
+    if not bias:
+        numerical_grad *=len(x_data)
+
+    backprop_grad = layer.d_b[node_idx][col] if bias else layer.d_w[node_idx][col]
+    print("\nLayer: {}, node: {} pixel: {}".format(layer_idx, node_idx, col))
+    print("Gradient difference: {}".format(abs(abs(numerical_grad)-abs(backprop_grad))))
     print("Numerical approximation: {}".format(numerical_grad))
     print("Backprop: {}".format(backprop_grad))
 

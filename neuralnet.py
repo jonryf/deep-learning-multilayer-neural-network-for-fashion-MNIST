@@ -13,12 +13,14 @@
 ################################################################################
 
 import os, gzip
+import random
+
 import yaml
 import numpy as np
 import math
 import timeit
 
-from utils import plot
+from utils import plot, numerical_approximation
 
 train_std = None
 train_mean = None
@@ -52,15 +54,17 @@ def one_hot_encoding(labels, num_classes=10):
     return np.array(one_hot_labels)
 
 
-def mini_batch(x, y):  # returns data split into 128-max batches (leaves out remainder)
-    if len(x) < 128:
+def mini_batch(x, y, size):  # returns data split into 128-max batches (leaves out remainder)
+    if len(x) < size:
         return x, y
-    num_batches = math.floor(len(x) / 128)
+    num_batches = math.floor(len(x) / size)
     x_batches = []
     y_batches = []
+
+
     for i in range(num_batches - 1):
-        x_batches.append(x[i * 128: (i + 1) * 128])
-        y_batches.append(y[i * 128: (i + 1) * 128])
+        x_batches.append(x[i * size: (i + 1) * size])
+        y_batches.append(y[i * size: (i + 1) * size])
     return x_batches, y_batches
 
 
@@ -83,6 +87,14 @@ def load_data(path, mode='train'):
 
     normalized_images = normalize_data(images)
     one_hot_labels = one_hot_encoding(labels, num_classes=10)
+
+    data = list(zip(normalized_images, one_hot_labels))
+
+    random.shuffle(data)
+
+    normalized_images, one_hot_labels = zip(*data)
+    normalized_images = np.array(normalized_images)
+    one_hot_labels = np.array(one_hot_labels)
 
     return normalized_images, one_hot_labels
 
@@ -308,7 +320,7 @@ class Neuralnetwork():
         '''
         compute the categorical cross-entropy loss and return it.
         '''
-        loss = -np.sum(np.sum(targets * np.log(logits + 0.0000000001), axis=1, keepdims=True) / logits.shape[0])
+        loss = -np.sum(np.sum(targets * np.log(logits + 0.0000000001), axis=0, keepdims=True) / logits.shape[0])
 
         # L2 loss:
         l2_penalty = self.config['L2_penalty']
@@ -375,7 +387,7 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
     @param config:
     """
     # break data into 128-size batches for small batch gradient descent
-    x_batches, y_batches = mini_batch(x_train, y_train)
+    x_batches, y_batches = mini_batch(x_train, y_train, config['batch_size'])
 
     # number of times the error can increase before ending training
     threshold = config['early_stop_epoch']
@@ -413,36 +425,31 @@ def test(model, X_test, y_test):
     return loss, accuracy
 
 
-def split_x_v(data):
-    pass
-
-
 def task_b():
-    ###############################
-    # Load the configuration.
     config = load_config("b")
+
+    num_of_examples = 12
+    # load the test data
+    x_train, y_train = load_data(path="./", mode="train")
+    x_train = x_train[:num_of_examples]
+    y_train = y_train[:num_of_examples]
 
     # Create the model
     model = Neuralnetwork(config)
 
-    # Load the data
-    x_train, y_train = load_data(path="./", mode="train")
-    x_test, y_test = load_data(path="./", mode="t10k")
+    # bias output weight
+    numerical_approximation(x_train, y_train, model, 4, 0, 0, bias=True)
 
-    # Create splits for validation data here.
-    num_examples = len(x_train)
-    # print("# examples:", num_examples)
+    # bias hidden weight
+    numerical_approximation(x_train, y_train, model, 2, 0, 6, bias=True)
 
-    # create validation set
-    size = len(x_train)
-    validation_size = 0.9
-    x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
-    x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
+    # hidden weights
+    numerical_approximation(x_train, y_train, model, 2, 2, 2)
+    numerical_approximation(x_train, y_train, model, 2, 3, 5)
 
-    # train the model
-    # train(model, x_train, y_train, x_valid, y_valid, config)
-
-    test_acc = test(model, x_test, y_test)
+    # inputs to hidden weights
+    numerical_approximation(x_train, y_train, model, 0, 0, 2)
+    numerical_approximation(x_train, y_train, model, 0, 0, 1)
 
 
 def task_c():
@@ -481,8 +488,8 @@ def task_c():
         for i in range(k_size):  # get folds of size 1/K)
             r = np.random.randint(num_examples)
             # if not(x_train[r] in X): #insert random pairs if not already present
-            X.append(x_train[r])
-            y.append(y_train[r])
+            X.append(x_train[(i+k) % K])
+            y.append(y_train[(i+k) % K])
         X = np.array(X)
         y = np.array(y)
         # create validation set
@@ -512,6 +519,7 @@ def task_d():
     config = load_config("d")
     model = Neuralnetwork(config)
     x_train, y_train = load_data(path="./", mode="train")
+
     x_test, y_test = load_data(path="./", mode="t10k")
 
     train_size = 0.9
@@ -526,8 +534,8 @@ def task_d():
 
 
 if __name__ == "__main__":
-    # task_b()
-    # task_c()
-    task_d()
+    #task_b()
+    task_c()
+    #task_d()
     # task_e()
     # task_f()
