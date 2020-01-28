@@ -19,6 +19,7 @@ import yaml
 import numpy as np
 import math
 import timeit
+import io
 
 from utils import plot, numerical_approximation
 
@@ -533,9 +534,28 @@ def task_d():
     print("Test accuracy: {}".format(test_acc))
 
 
+def task_e():
+    pass
+
+
+def task_f():
+    pass
+
+
 if __name__ == "__main__":
-    #task_b()
-    task_c()
-    #task_d()
-    # task_e()
-    # task_f()
+    task = ''
+    while task != 'q':
+        task = input("Choose your task - lowercase letter: ")
+        if task == 'b':
+            task_b()
+        elif task == 'c':
+            task_c()
+        elif task == 'd':
+            task_d()
+        elif task == 'e':
+            task_e()
+        elif task == 'f':
+            task_f()
+        else:
+            print("invalid entry - select  from b,c,d,e,f")
+    print("Ending Program")
