@@ -216,6 +216,8 @@ class Layer:
         self.d_w = None  # Save the gradient w.r.t w in this
         self.d_b = None  # Save the gradient w.r.t b in this
 
+        self.v = None  # Momentum
+
     def __call__(self, x):
         """
         Make layer callable.
@@ -340,16 +342,18 @@ class Neuralnetwork():
 
         @param model: model to update weights on
         """
-        v = 0
         for layer in self.layers:
             if isinstance(layer, Layer):
                 learning_rate = self.config['learning_rate']
                 if self.config['momentum']:
+                    if layer.v is None:
+                        layer.v = layer.d_w
                     momentum_gamma = self.config['momentum_gamma']
-                    v = momentum_gamma * v + (1 - momentum_gamma) * layer.d_w
-                    layer.w += learning_rate * v * self.config['L2_penalty']
+                    layer.v = momentum_gamma * layer.v + (1 - momentum_gamma) * layer.d_w
+                    layer.w += learning_rate * (layer.v + self.config['L2_penalty'] * layer.w)
                 else:
-                    layer.w += learning_rate * layer.d_w * self.config['L2_penalty']
+                    layer.w += learning_rate * (layer.d_w + self.config['L2_penalty'] * layer.w)
+
                 layer.b += learning_rate * layer.d_b
 
 
@@ -393,11 +397,9 @@ def test(model, X_test, y_test):
     Calculate and return the accuracy on the test set.
     """
     loss, predictions = model.forward(X_test, y_test)
-    print(y_test.shape)
     targets = np.argmax(y_test, axis=-1)
     predictions = np.argmax(predictions, axis=-1)
     accuracy = np.sum(targets == predictions) / len(y_test)
-    print(accuracy)
     return loss, accuracy
 
 def split_x_v(data):
@@ -423,8 +425,8 @@ def task_b():
     # create validation set
     size = len(x_train)
     validation_size = 0.9
-    x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
     x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
+    x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
 
     #train the model
     #train(model, x_train, y_train, x_valid, y_valid, config)
@@ -463,13 +465,15 @@ def task_d():
     x_train, y_train = load_data(path="./", mode="train")
     x_test, y_test = load_data(path="./", mode="t10k")
 
-    validation_size = 0.9
+    train_size = 0.9
     size = len(x_train)
-    x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
-    x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
+    x_valid, y_valid = x_train[int(size * train_size):], y_train[int(size * train_size):]
+    x_train, y_train = x_train[:int(size * train_size)], y_train[:int(size * train_size)]
 
     train(model, x_train, y_train, x_valid, y_valid, config)
     plot(model)
+    test_acc = test(model, x_test, y_test)
+    print("Test accuracy: {}".format(test_acc))
 
 
 
