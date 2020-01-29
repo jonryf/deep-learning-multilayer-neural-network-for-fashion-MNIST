@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def graph_plot(data, labels, legends, show):
+def graph_plot(data, labels, legends, show, title=""):
     """
     Plot multiple graphs in same plot
 
@@ -13,6 +13,7 @@ def graph_plot(data, labels, legends, show):
     x = np.arange(1, len(data[0]) + 1)
     for to_plot in data:
         plt.plot(x, to_plot)
+    plt.title(title)
     plt.xlabel(labels[0])
     plt.ylabel(labels[1])
     plt.legend(legends)
@@ -116,3 +117,6 @@ def numerical_approximation(x_data, y_data, model, layer_idx, node_idx, col, bia
     print("Gradient difference: {}".format(abs(abs(numerical_grad) - abs(backprop_grad))))
     print("Numerical approximation: {}".format(numerical_grad))
     print("Backprop: {}".format(backprop_grad))
+
+
+

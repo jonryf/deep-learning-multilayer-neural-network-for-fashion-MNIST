@@ -222,7 +222,7 @@ class Layer:
         """
         Define the architecture and create placeholder.
         """
-        np.random.seed(92)
+        np.random.seed(42)
         self.w = np.random.randn(in_units, out_units)  # Declare the Weight matrix
         self.b = np.array(np.zeros((1, out_units)))  # Create a placeholder for Bias
         self.x = None  # Save the input to forward in this
@@ -443,7 +443,6 @@ def task_b():
 
     # Create the model
     model = Neuralnetwork(config)
-    print(model.layers)
 
     # bias output weight
     numerical_approximation(x_train, y_train, model, 2, 0, 0, bias=True)
@@ -566,8 +565,10 @@ def task_c():
     print("Test accuracy of best model: ", test_acc)
 
 def task_d():
+    d_configs = ["d1", "d2"]
+    titles = ["0.001 Regularization", "0.0001 Regularization"]
     for i in range(2):
-        config = load_config("d{}".format(i + 1))
+        config = load_config(d_configs[i])
         model = Neuralnetwork(config)
         x_train, y_train = load_data(path="./", mode="train")
         x_test, y_test = load_data(path="./", mode="t10k")
@@ -578,9 +579,10 @@ def task_d():
         x_train, y_train = x_train[:int(size * train_size)], y_train[:int(size * train_size)]
 
         train(model, x_train, y_train, x_valid, y_valid, config)
-        plot(model)
+        plot(model, titles[i])
         test_acc = test(model, x_test, y_test)
         print("Test accuracy: {}".format(test_acc))
+
 
 
 def task_e():
@@ -641,5 +643,5 @@ if __name__ == "__main__":
         elif task == 'q':
             print("Ending Program")
         else:
-            print("invalid entry - select  from b,c,d,e,f")
+            print("invalid entry - select  from {b,c,d,e,f}")
 

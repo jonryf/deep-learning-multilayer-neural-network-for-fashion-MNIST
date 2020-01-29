@@ -11,7 +11,7 @@ learning_rate: 0.0001
 batch_size: 128
 
 # Number of epochs to train the model
-epochs: 5
+epochs: 100
 
 # Flag to enable early stopping
 early_stop: 'False'
