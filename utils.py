@@ -107,7 +107,7 @@ def numerical_approximation(x_data, y_data, model, layer_idx, node_idx, col, bia
     model.forward(x_data, y_data)
     model.backward()
 
-    numerical_grad = ((loss_1 - loss_2) / (2 * eps))
+    numerical_grad = -((loss_1 - loss_2) / (2 * eps))
     # Attention: Loss is divided by number of images, therefore multiplied by it here
     if not bias:
         numerical_grad *= len(x_data)

@@ -1,5 +1,5 @@
 # This specifies the number of layers and number of hidden neurons in each layer.
-layer_specs: [784, 100, 100, 10]
+layer_specs: [784, 100, 10]
 
 # Type of non-linear activation function to be used for the layers.
 activation: "tanh"
