@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def graph_plot(data, labels, legends):
+def graph_plot(data, labels, legends, show):
     """
     Plot multiple graphs in same plot
 
@@ -16,9 +16,11 @@ def graph_plot(data, labels, legends):
     plt.xlabel(labels[0])
     plt.ylabel(labels[1])
     plt.legend(legends)
-    plt.show()
+    if show:
+        plt.show()
 
-def plot(model):
+
+def plot_loss(model, show=True):
     """
     Plot loss and accuracy graphs
 
@@ -26,7 +28,43 @@ def plot(model):
     """
     # plot the loss
     graph_plot([model.training_loss, model.validation_loss],
-               ["Epoch", "Cross-entropy loss"], ["Training loss", "Validation loss"])
+               ["Epoch", "Cross-entropy loss"], ["Training loss", "Validation loss"], show)
+
+
+def plot_acc(model, show=True):
+    # plot the accuracy
+    graph_plot([model.training_acc, model.validation_acc],
+               ["Epoch", "Accuracy"], ["Training accuracy", "Validation accuracy"], show)
+
+
+def plot(model):
+    plot_loss(model)
+    plot_acc(model)
+
+
+def multi_plots(models, names):
+    """
+    Plot loss and accuracy graphs
+
+    @param model: trained model to plot
+    """
+    # plot the loss
+    losses = []
+    loss_labels = []
+
+    acc = []
+
+    for model, name in zip(models, names):
+        losses += model.training_loss
+        losses += model.validation_loss
+        loss_labels += "Training loss - " + name
+        loss_labels += "validation loss - " + name
+
+        acc += model.training_acc
+        acc += model.validation_acc
+
+    graph_plot(losses,
+               ["Epoch", "Cross-entropy loss"], loss_labels)
 
     # plot the accuracy
     graph_plot([model.training_acc, model.validation_acc],
@@ -42,7 +80,7 @@ def numerical_approximation(x_data, y_data, model, layer_idx, node_idx, col, bia
     @param layer_idx: index of layer to calculate approximation
     @param node_idx: index of node in layer to calculate approximation
     """
-    eps = 0.000001
+    eps = 0.01
     layer = model.layers[layer_idx]
 
     vec = layer.b if bias else layer.w
@@ -71,13 +109,10 @@ def numerical_approximation(x_data, y_data, model, layer_idx, node_idx, col, bia
     numerical_grad = ((loss_1 - loss_2) / (2 * eps))
     # Attention: Loss is divided by number of images, therefore multiplied by it here
     if not bias:
-        numerical_grad *=len(x_data)
+        numerical_grad *= len(x_data)
 
     backprop_grad = layer.d_b[node_idx][col] if bias else layer.d_w[node_idx][col]
     print("\nLayer: {}, node: {} pixel: {}".format(layer_idx, node_idx, col))
-    print("Gradient difference: {}".format(abs(abs(numerical_grad)-abs(backprop_grad))))
+    print("Gradient difference: {}".format(abs(abs(numerical_grad) - abs(backprop_grad))))
     print("Numerical approximation: {}".format(numerical_grad))
     print("Backprop: {}".format(backprop_grad))
-
-
-

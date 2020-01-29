@@ -21,7 +21,7 @@ import math
 import timeit
 import io
 
-from utils import plot, numerical_approximation
+from utils import plot, numerical_approximation, plot_acc, plot_loss
 from matplotlib import pyplot as plt
 from utils import plot
 
@@ -71,7 +71,7 @@ def mini_batch(x, y, size):  # returns data split into 128-max batches (leaves o
     x = np.array(x)
     y = np.array(y)
 
-    for i in range(num_batches - 1):
+    for i in range(num_batches):
         x_batches.append(x[i * size: (i + 1) * size])
         y_batches.append(y[i * size: (i + 1) * size])
     return x_batches, y_batches
@@ -96,15 +96,6 @@ def load_data(path, mode='train'):
 
     normalized_images = normalize_data(images)
     one_hot_labels = one_hot_encoding(labels, num_classes=10)
-
-    data = list(zip(normalized_images, one_hot_labels))
-
-    random.shuffle(data)
-
-    normalized_images, one_hot_labels = zip(*data)
-    normalized_images = np.array(normalized_images)
-    one_hot_labels = np.array(one_hot_labels)
-
     return normalized_images, one_hot_labels
 
 
@@ -113,7 +104,8 @@ def softmax(x):
     Implement the softmax function here.
     Remember to take care of the overflow condition.
     """
-    return np.exp(x) / np.sum(np.exp(x), axis=len(x.shape) - 1, keepdims=True)
+    e = np.exp(x - np.amax(x, axis=1, keepdims=True))
+    return e / np.sum(e, axis=len(x.shape) - 1, keepdims=True)
 
 
 class Activation:
@@ -210,7 +202,7 @@ class Activation:
         """
         Compute the gradient for ReLU here.
         """
-        grad = self.x
+        grad = np.zeros(self.x.shape)
         grad[self.x <= 0] = 0
         grad[self.x > 0] = 1
         return grad
@@ -230,7 +222,7 @@ class Layer:
         """
         Define the architecture and create placeholder.
         """
-        np.random.seed(42)
+        np.random.seed(92)
         self.w = np.random.randn(in_units, out_units)  # Declare the Weight matrix
         self.b = np.array(np.zeros((1, out_units)))  # Create a placeholder for Bias
         self.x = None  # Save the input to forward in this
@@ -329,15 +321,19 @@ class Neuralnetwork():
         '''
         compute the categorical cross-entropy loss and return it.
         '''
-        loss = -np.sum(np.sum(targets * np.log(logits + 0.0000000001), axis=0, keepdims=True) / logits.shape[0])
+        eps = 1e-15
+        logits = np.clip(logits, eps, 1 - eps)
+
+        loss = -np.sum(targets * np.log(logits))
 
         # L2 loss:
         l2_penalty = self.config['L2_penalty']
-        for layer in self.layers:
-            if isinstance(layer, Layer):
-                loss += l2_penalty / 2 * np.sum(layer.w ** 2)
 
-        return loss
+        if l2_penalty > 0:
+            for layer in self.layers:
+                if isinstance(layer, Layer):
+                    loss += l2_penalty / 2 * np.sum(np.square(layer.w))
+        return loss / logits.shape[0]
 
     def backward(self):
         '''
@@ -374,9 +370,9 @@ class Neuralnetwork():
                         layer.v = layer.d_w
                     momentum_gamma = self.config['momentum_gamma']
                     layer.v = momentum_gamma * layer.v + (1 - momentum_gamma) * layer.d_w
-                    layer.w += learning_rate * (layer.v - self.config['L2_penalty'] * layer.w)
+                    layer.w += learning_rate * layer.v - self.config['L2_penalty'] * layer.w
                 else:
-                    layer.w += learning_rate * (layer.d_w - self.config['L2_penalty'] * layer.w)
+                    layer.w += learning_rate * layer.d_w - self.config['L2_penalty'] * layer.w
 
                 layer.b += learning_rate * layer.d_b
 
@@ -436,7 +432,6 @@ def test(model, X_test, y_test):
 
 
 def task_b():
-    ###############################
     # Load the configuration.
     config = load_config("b")
 
@@ -448,24 +443,21 @@ def task_b():
 
     # Create the model
     model = Neuralnetwork(config)
+    print(model.layers)
 
     # bias output weight
-    numerical_approximation(x_train, y_train, model, 4, 0, 0, bias=True)
+    numerical_approximation(x_train, y_train, model, 2, 0, 0, bias=True)
 
-    # Create splits for validation data here.
-    num_examples = len(x_train)
-    # print("# examples:", num_examples)
+    # hidden bias weight
+    numerical_approximation(x_train, y_train, model, 0, 0, 0, bias=True)
 
-    # create validation set
-    size = len(x_train)
-    validation_size = 0.9
-    x_valid, y_valid = x_train[int(size * validation_size):], y_train[int(size * validation_size):]
-    x_train, y_train = x_train[:int(size * validation_size)], y_train[:int(size * validation_size)]
+    # two hidden to output weight
+    numerical_approximation(x_train, y_train, model, 2, 0, 1)
+    numerical_approximation(x_train, y_train, model, 2, 2, 2)
 
-    # train the model
-    # train(model, x_train, y_train, x_valid, y_valid, config)
-
-    test_acc = test(model, x_test, y_test)
+    # two input to hidden weights
+    numerical_approximation(x_train, y_train, model, 0, 0, 1)
+    numerical_approximation(x_train, y_train, model, 0, 2, 2)
 
 
 def task_c():
@@ -574,24 +566,58 @@ def task_c():
     print("Test accuracy of best model: ", test_acc)
 
 def task_d():
-    config = load_config("d")
-    model = Neuralnetwork(config)
-    x_train, y_train = load_data(path="./", mode="train")
-    x_test, y_test = load_data(path="./", mode="t10k")
+    for i in range(2):
+        config = load_config("d{}".format(i + 1))
+        model = Neuralnetwork(config)
+        x_train, y_train = load_data(path="./", mode="train")
+        x_test, y_test = load_data(path="./", mode="t10k")
 
-    train_size = 0.9
-    size = len(x_train)
-    x_valid, y_valid = x_train[int(size * train_size):], y_train[int(size * train_size):]
-    x_train, y_train = x_train[:int(size * train_size)], y_train[:int(size * train_size)]
+        train_size = 0.9
+        size = len(x_train)
+        x_valid, y_valid = x_train[int(size * train_size):], y_train[int(size * train_size):]
+        x_train, y_train = x_train[:int(size * train_size)], y_train[:int(size * train_size)]
 
-    train(model, x_train, y_train, x_valid, y_valid, config)
-    plot(model)
-    test_acc = test(model, x_test, y_test)
-    print("Test accuracy: {}".format(test_acc))
+        train(model, x_train, y_train, x_valid, y_valid, config)
+        plot(model)
+        test_acc = test(model, x_test, y_test)
+        print("Test accuracy: {}".format(test_acc))
 
 
 def task_e():
-    pass
+    models = []
+    for i in range(3):
+        config = load_config("e{}".format(i + 1))
+        model = Neuralnetwork(config)
+        x_train, y_train = load_data(path="./", mode="train")
+        x_test, y_test = load_data(path="./", mode="t10k")
+
+        train_size = 0.9
+        size = len(x_train)
+        x_valid, y_valid = x_train[int(size * train_size):], y_train[int(size * train_size):]
+        x_train, y_train = x_train[:int(size * train_size)], y_train[:int(size * train_size)]
+
+        train(model, x_train, y_train, x_valid, y_valid, config)
+        models.append(model)
+
+        test_acc = test(model, x_test, y_test)
+        print("Test accuracy: {}".format(test_acc))
+
+
+    for model in models:
+        plot_loss(model, False)
+
+    plt.legend(["Training loss - Tanh", "Validation loss - Tanh",
+                "Training loss - ReLU", "Validation loss - ReLU",
+                "Training loss - Sigmoid", "Validation loss - Sigmoid"])
+    plt.show()
+
+    for model in models:
+        plot_acc(model, False)
+
+    plt.legend(["Training accuracy - Tanh", "Validation accuracy - Tanh",
+                "Training accuracy - ReLU", "Validation accuracy - ReLU",
+                "Training accuracy - Sigmoid", "Validation accuracy - Sigmoid"])
+    plt.show()
 
 
 def task_f():
