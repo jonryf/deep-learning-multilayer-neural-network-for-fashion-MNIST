@@ -21,7 +21,7 @@ import math
 import timeit
 import io
 
-from utils import plot, numerical_approximation, plot_acc, plot_loss
+from utils import plot, numerical_approximation, plot_acc, plot_loss, graph_error
 from matplotlib import pyplot as plt
 from utils import plot
 
@@ -532,19 +532,23 @@ def task_c():
     aligned_validation_accuracies = np.array([x[:cutoff] for x in ten_validation_accuracies])
 
     #plot the data
-    aligned_data = [aligned_training_losses, aligned_training_accuracies, aligned_validation_losses, aligned_validation_accuracies]
-    aligned_titles = ["Aligned Training Losses", "Aligned Training Accuracies", "Aligned Validation Losses", "Aligned Validation Accuracies"]
+    aligned_data = [aligned_training_losses, aligned_validation_losses, aligned_training_accuracies, aligned_validation_accuracies]
+    aligned_titles = ["Training Losses", "Training Accuracies", "Validation Losses", "Validation Accuracies"]
     aligned_ylables = ["Cross Entropy Error", "Accuracy", "Cross Entropy Error", "Accuracy"]
+    means = []
+    stds = []
     for i in range(len(aligned_data)):
-        print(aligned_titles[i])
+        #print(aligned_titles[i])
         data = aligned_data[i]
-        print("Data shape:", data.shape)
+        #print("Data shape:", data.shape)
         mean = np.mean(data, axis=0)  # divide sum of columns by num of folds
-        print("mean shape:", mean.shape)
-        print(mean)
+        means.append(mean)
+        #print("mean shape:", mean.shape)
+        #print(mean)
         std = np.std(data, axis=0)
-        print("Std shape:", std.shape)
-        print(std)
+        stds.append(std)
+        #print("Std shape:", std.shape)
+        #print(std)
         '''
         y_std = []
         for i in range(len(mean)):
@@ -552,14 +556,18 @@ def task_c():
                 y_std.append(np.std(data[:, i]))
             else:
                 y_std.append(0)
-        '''
+        
         plt.errorbar(np.arange(1, len(mean)+1), mean, yerr=std)
         plt.title(aligned_titles[i])
         plt.ylabel(aligned_ylables[i])
         plt.xlabel("Epoch")
         #plt.legend(["Training data", "Validation data"])
         plt.show()
-
+        '''
+    graph_error(means[0:2], stds[0:2], ["Epoch", "Loss"], ["Training", "Validation"], "Training vs Validation Loss",
+                show=True)
+    graph_error(means[2:], stds[2:], ["Epoch", "Loss"], ["Training", "Validation"], "Training vs Validation Accuracy",
+                show=True)
     ### Report Test Accuracy of best model
     test_loss, test_acc = test(best_model, x_test, y_test)
     print("Test accuracy of best model: ", test_acc)
@@ -580,7 +588,7 @@ def task_d():
 
         train(model, x_train, y_train, x_valid, y_valid, config)
         plot(model, titles[i])
-        test_acc = test(model, x_test, y_test)
+        test_loss, test_acc = test(model, x_test, y_test)
         print("Test accuracy: {}".format(test_acc))
 
 
@@ -623,7 +631,14 @@ def task_e():
 
 
 def task_f():
-    pass
+    #task i
+
+    config = load_config("c")
+    # Create the model
+    model = Neuralnetwork(config)
+    # Load the data
+    x_train, y_train = load_data(path="./", mode="train")
+    x_test, y_test = load_data(path="./", mode="t10k")
 
 
 if __name__ == "__main__":

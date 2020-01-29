@@ -2,7 +2,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def graph_plot(data, labels, legends, show, title=""):
+def graph_error(means, stds, labels, legends, title, show=True):
+    x = np.arange(1, len(means[0]) + 1)
+    for i in range(2):
+        plt.errorbar(np.arange(1, len(means[i])+1), means[i], yerr=stds[i])
+    plt.title(title)
+    plt.xlabel(labels[0])
+    plt.ylabel(labels[1])
+    plt.legend(legends)
+    if show:
+        plt.show()
+
+
+def graph_plot(data, labels, legends, title, show=True):
     """
     Plot multiple graphs in same plot
 
@@ -21,7 +33,7 @@ def graph_plot(data, labels, legends, show, title=""):
         plt.show()
 
 
-def plot_loss(model, show=True):
+def plot_loss(model, title, show=True):
     """
     Plot loss and accuracy graphs
 
@@ -29,18 +41,18 @@ def plot_loss(model, show=True):
     """
     # plot the loss
     graph_plot([model.training_loss, model.validation_loss],
-               ["Epoch", "Cross-entropy loss"], ["Training loss", "Validation loss"], show)
+               ["Epoch", "Cross-entropy loss"], ["Training loss", "Validation loss"], title, show)
 
 
-def plot_acc(model, show=True):
+def plot_acc(model, title, show=True):
     # plot the accuracy
     graph_plot([model.training_acc, model.validation_acc],
-               ["Epoch", "Accuracy"], ["Training accuracy", "Validation accuracy"], show)
+               ["Epoch", "Accuracy"], ["Training accuracy", "Validation accuracy"], title, show)
 
 
-def plot(model):
-    plot_loss(model)
-    plot_acc(model)
+def plot(model, title=""):
+    plot_loss(model, title, show=True)
+    plot_acc(model, title, show=True)
 
 
 def multi_plots(models, names):
