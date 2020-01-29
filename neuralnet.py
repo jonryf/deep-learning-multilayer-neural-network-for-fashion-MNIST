@@ -632,19 +632,21 @@ def task_e():
 
 def task_f():
     #task i
-
-    config = load_config("fhalf")
-    # Create the model
-    model = Neuralnetwork(config)
-    # Load the data
-    x_train, y_train = load_data(path="./", mode="train")
-    x_test, y_test = load_data(path="./", mode="t10k")
-    train_size = 0.9
-    size = len(x_train)
-    x_valid, y_valid = x_train[int(size * train_size):], y_train[int(size * train_size):]
-    x_train, y_train = x_train[:int(size * train_size)], y_train[:int(size * train_size)]
-
-    train(model, x_train, y_train, x_valid, y_valid, config)
+    configs = ["fhalf", "fdouble", "fdeeper"]
+    titles = ["One Hidden Layer (25 Nodes)", "One Hidden Layer (100 Nodes)", "Two Hidden Layers (50 Nodes Each)"]
+    for i in range(3):
+        config = load_config(configs[i])
+        # Create the model
+        model = Neuralnetwork(config)
+        # Load the data
+        x_train, y_train = load_data(path="./", mode="train")
+        x_test, y_test = load_data(path="./", mode="t10k")
+        train_size = 0.9
+        size = len(x_train)
+        x_valid, y_valid = x_train[int(size * train_size):], y_train[int(size * train_size):]
+        x_train, y_train = x_train[:int(size * train_size)], y_train[:int(size * train_size)]
+        train(model, x_train, y_train, x_valid, y_valid, config)
+        plot(model, titles[i])
 
 if __name__ == "__main__":
     task = ''
