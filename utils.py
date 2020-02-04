@@ -3,7 +3,15 @@ import numpy as np
 
 
 def graph_error(means, stds, labels, legends, title, show=True):
-    x = np.arange(1, len(means[0]) + 1)
+    """
+    Create a plot with error bar
+    @param means: mean data
+    @param stds: standard deviation
+    @param labels: labels the axises
+    @param legends: legends for the plot
+    @param title: title of the plot
+    @param show: if the plot should be displayed right away. Set to false to display multiple graphs in same plot
+    """
     for i in range(2):
         plt.errorbar(np.arange(1, len(means[i])+1), means[i], yerr=stds[i])
     plt.title(title)
@@ -86,6 +94,7 @@ def multi_plots(models, names):
 
 def numerical_approximation(x_data, y_data, model, layer_idx, node_idx, col, bias=False):
     """
+    Calculate the numerical approximation
 
     @param x_data: some example data
     @param y_data: labels for the example data
@@ -120,7 +129,7 @@ def numerical_approximation(x_data, y_data, model, layer_idx, node_idx, col, bia
     model.backward()
 
     numerical_grad = -((loss_1 - loss_2) / (2 * eps))
-    # Attention: Loss is divided by number of images, therefore multiplied by it here
+    # Loss is divided by number of images, therefore multiplied by it here
     if not bias:
         numerical_grad *= len(x_data)
 

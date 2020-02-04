@@ -18,10 +18,8 @@ import random
 import yaml
 import numpy as np
 import math
-import timeit
-import io
 
-from utils import plot, numerical_approximation, plot_acc, plot_loss, graph_error
+from utils import numerical_approximation, plot_acc, plot_loss, graph_error
 from matplotlib import pyplot as plt
 from utils import plot
 
@@ -34,7 +32,7 @@ def load_config(version):
     Load the configuration from config.yaml.
     """
     #
-    return yaml.load(open('config' + version + '.yaml', 'r'), Loader=yaml.SafeLoader)
+    return yaml.load(open('./configs/config' + version + '.yaml', 'r'), Loader=yaml.SafeLoader)
 
 
 def normalize_data(img):
@@ -48,6 +46,10 @@ def normalize_data(img):
 def one_hot_encoding(labels, num_classes=10):
     """
     Encode labels using one hot encoding and return them.
+
+    @param labels: numerical labels
+    @param num_classes: number of classes to be included in the one hot encoded data
+    @return:
     """
     one_hot_labels = []
     for label in labels:
@@ -57,7 +59,15 @@ def one_hot_encoding(labels, num_classes=10):
     return np.array(one_hot_labels)
 
 
-def mini_batch(x, y, size):  # returns data split into 128-max batches (leaves out remainder)
+def mini_batch(x, y, size):
+    """
+    Shuffle and split the data into mini batches
+
+    @param x: images
+    @param y: labels
+    @param size: batch size
+    @return: list of batches
+    """
     if len(x) < size:
         return x, y
     num_batches = math.floor(len(x) / size)
@@ -80,7 +90,10 @@ def mini_batch(x, y, size):  # returns data split into 128-max batches (leaves o
 def load_data(path, mode='train'):
     """
     Load Fashion MNIST data.
-    Use mode='train' for train and mode='t10k' for test.
+
+    @param path: folder location of dataset
+    @param mode: Use mode='train' for train and mode='t10k' for test.
+    @return: normalized data and one encoded labels
     """
     labels_path = os.path.join(path, f'{mode}-labels-idx1-ubyte.gz')
     images_path = os.path.join(path, f'{mode}-images-idx3-ubyte.gz')
@@ -103,6 +116,9 @@ def softmax(x):
     """
     Implement the softmax function here.
     Remember to take care of the overflow condition.
+
+    @param x: predictions
+    @return: softmax predictions
     """
     e = np.exp(x - np.amax(x, axis=1, keepdims=True))
     return e / np.sum(e, axis=len(x.shape) - 1, keepdims=True)
@@ -346,6 +362,14 @@ class Neuralnetwork():
             delta = layer.backward(delta)
 
     def log_metrics(self, training_loss, validation_loss, training_acc, validation_acc):
+        """
+        Save epoch metrics to the model
+
+        @param training_loss: Training loss under one epoch
+        @param validation_loss: Validation loss under one epoch
+        @param training_acc: Training accuracy under one epoch
+        @param validation_acc: Validation accuracy under one epoch
+        """
         if len(self.validation_loss) > 0 and validation_loss > self.validation_loss[-1]:
             self.validation_increments += 1
         else:
@@ -359,8 +383,6 @@ class Neuralnetwork():
     def update_weights(self):
         """
         Update the weights, after back-propagation has happen
-
-        @param model: model to update weights on
         """
         for layer in self.layers:
             if isinstance(layer, Layer):
@@ -384,12 +406,12 @@ def train(model, x_train, y_train, x_valid, y_valid, config):
     Implement Early Stopping.
     Use config to set parameters for training like learning rate, momentum, etc.
 
-    @param model:
-    @param x_train:
-    @param y_train:
-    @param x_valid:
-    @param y_valid:
-    @param config:
+    @param model: model to to train
+    @param x_train: training data, images
+    @param y_train: labels for training data
+    @param x_valid: validation data, images
+    @param y_valid: labels for validation data
+    @param config: current configuration
     """
 
     # number of times the error can increase before ending training
@@ -485,16 +507,15 @@ def task_c():
     best_model.validation_loss.append(100)
 
     # perform k fold 10 times:
-    K = 10
+    K = 2
     for k in range(K):  # for each fold
         print("K value: ", k)
         model = Neuralnetwork(config)
         X = []
         y = []
-        k_size = int(len(x_train) / K)
+        k_size = len(x_train) - int(len(x_train) / K)
         for i in range(k_size):  # get folds of size 1/K)
             r = np.random.randint(num_examples)
-            # if not(x_train[r] in X): #insert random pairs if not already present
             X.append(x_train[r])
             y.append(y_train[r])
         X = np.array(X)
@@ -504,6 +525,7 @@ def task_c():
         validation_size = 0.9
         Xv, yv = X[int(size * validation_size):], y[int(size * validation_size):]
         Xt, yt = X[:int(size * validation_size)], y[:int(size * validation_size)]
+
         # train the model
         train(model, Xt, yt, Xv, yv, config)
 
@@ -517,53 +539,31 @@ def task_c():
         if model.validation_loss[-1] < best_model.validation_loss[-1]:
             best_model = model
     ### Report training and validation accuracy and loss for each K
-    #plot(model)
 
-    #find the minimum epoch number to convergence:
+    # find the minimum epoch number to convergence:
     lengths = []
     for item in ten_validation_losses:
         lengths.append(len(item))
     cutoff = min(lengths)
 
-    #align the losses and accuracy by cutoff value
+    # align the losses and accuracy by cutoff value
     aligned_training_losses = np.array([x[:cutoff] for x in ten_training_losses])
     aligned_training_accuracies = np.array([x[:cutoff] for x in ten_training_accuracies])
     aligned_validation_losses = np.array([x[:cutoff] for x in ten_validation_losses])
     aligned_validation_accuracies = np.array([x[:cutoff] for x in ten_validation_accuracies])
 
-    #plot the data
-    aligned_data = [aligned_training_losses, aligned_validation_losses, aligned_training_accuracies, aligned_validation_accuracies]
-    aligned_titles = ["Training Losses", "Training Accuracies", "Validation Losses", "Validation Accuracies"]
-    aligned_ylables = ["Cross Entropy Error", "Accuracy", "Cross Entropy Error", "Accuracy"]
+    # plot the data
+    aligned_data = [aligned_training_losses, aligned_validation_losses, aligned_training_accuracies,
+                    aligned_validation_accuracies]
     means = []
     stds = []
     for i in range(len(aligned_data)):
-        #print(aligned_titles[i])
         data = aligned_data[i]
-        #print("Data shape:", data.shape)
         mean = np.mean(data, axis=0)  # divide sum of columns by num of folds
         means.append(mean)
-        #print("mean shape:", mean.shape)
-        #print(mean)
         std = np.std(data, axis=0)
         stds.append(std)
-        #print("Std shape:", std.shape)
-        #print(std)
-        '''
-        y_std = []
-        for i in range(len(mean)):
-            if (i + 1) % 10 == 0 or i == 0:
-                y_std.append(np.std(data[:, i]))
-            else:
-                y_std.append(0)
-        
-        plt.errorbar(np.arange(1, len(mean)+1), mean, yerr=std)
-        plt.title(aligned_titles[i])
-        plt.ylabel(aligned_ylables[i])
-        plt.xlabel("Epoch")
-        #plt.legend(["Training data", "Validation data"])
-        plt.show()
-        '''
+
     graph_error(means[0:2], stds[0:2], ["Epoch", "Loss"], ["Training", "Validation"], "Training vs Validation Loss",
                 show=True)
     graph_error(means[2:], stds[2:], ["Epoch", "Loss"], ["Training", "Validation"], "Training vs Validation Accuracy",
@@ -571,6 +571,7 @@ def task_c():
     ### Report Test Accuracy of best model
     test_loss, test_acc = test(best_model, x_test, y_test)
     print("Test accuracy of best model: ", test_acc)
+
 
 def task_d():
     d_configs = ["d1", "d2"]
@@ -592,7 +593,6 @@ def task_d():
         print("Test accuracy: {}".format(test_acc))
 
 
-
 def task_e():
     models = []
     for i in range(3):
@@ -612,26 +612,25 @@ def task_e():
         test_acc = test(model, x_test, y_test)
         print("Test accuracy: {}".format(test_acc))
 
-
     for model in models:
-        plot_loss(model, False)
+        plot_loss(model, "Loss for different activation functions", False)
 
     plt.legend(["Training loss - Tanh", "Validation loss - Tanh",
-                "Training loss - ReLU", "Validation loss - ReLU",
-                "Training loss - Sigmoid", "Validation loss - Sigmoid"])
+                "Training loss - Sigmoid", "Validation loss - Sigmoid",
+                "Training loss - ReLU", "Validation loss - ReLU"])
     plt.show()
 
     for model in models:
-        plot_acc(model, False)
+        plot_acc(model, "Accuracy for different activation functions", False)
 
     plt.legend(["Training accuracy - Tanh", "Validation accuracy - Tanh",
-                "Training accuracy - ReLU", "Validation accuracy - ReLU",
-                "Training accuracy - Sigmoid", "Validation accuracy - Sigmoid"])
+                "Training accuracy - Sigmoid", "Validation accuracy - Sigmoid",
+                "Training accuracy - ReLU", "Validation accuracy - ReLU"])
     plt.show()
 
 
 def task_f():
-    #task i
+    # task i
     configs = ["fhalf", "fdouble", "fdeeper"]
     titles = ["One Hidden Layer (25 Nodes)", "One Hidden Layer (100 Nodes)", "Two Hidden Layers (50 Nodes Each)"]
     for i in range(3):
@@ -640,13 +639,13 @@ def task_f():
         model = Neuralnetwork(config)
         # Load the data
         x_train, y_train = load_data(path="./", mode="train")
-        x_test, y_test = load_data(path="./", mode="t10k")
         train_size = 0.9
         size = len(x_train)
         x_valid, y_valid = x_train[int(size * train_size):], y_train[int(size * train_size):]
         x_train, y_train = x_train[:int(size * train_size)], y_train[:int(size * train_size)]
         train(model, x_train, y_train, x_valid, y_valid, config)
         plot(model, titles[i])
+
 
 if __name__ == "__main__":
     task = ''
@@ -666,4 +665,3 @@ if __name__ == "__main__":
             print("Ending Program")
         else:
             print("invalid entry - select  from {b,c,d,e,f}")
-
